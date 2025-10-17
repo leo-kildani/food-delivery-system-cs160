@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { useActionState } from "react";
 import { signUpAction, SignUpState } from "./actions";
 import { Button } from "@/components/ui/button";
-import { redirect } from "next/navigation";
 
 export default function SignUpForm() {
   const [signUpState, signUpFormAction, signUpIsPending] = useActionState(
