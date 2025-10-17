@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useActionState } from "react";
 import { signUpAction, SignUpState } from "./actions";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function SignUpForm() {
   const [signUpState, signUpFormAction, signUpIsPending] = useActionState(
@@ -161,6 +162,7 @@ export default function SignUpForm() {
           {signUpIsPending ? "Signing Up..." : "Sign Up"}
         </Button>
       </form>
+      <Link href="/login">Log In</Link>
     </div>
   );
 }
