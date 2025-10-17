@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ProductCategory {
+  FRUIT
+  VEGETABLE
+  DAIRY
+  MEAT
+}
+
+enum OrderStatus {
+  PENDING
+  CANCELLED
+  REFUNDED
+  COMPLETE
+}
+
+model User {
+  id            String            @id @default(cuid())
+  authId        String            @unique
+  firstName     String?
+  lastName      String?
+  email         String            @unique
+  role          UserRole          @default(USER)
+  addresses     DeliveryAddress[]
+  orders        Order[]
+  cart          Cart?
+}
+
+model DeliveryAddress {
+  id           Int      @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  street       String
+  aptNumber    String?
+  city         String
+  stateCode    String   @db.VarChar(2)
+  postalCode   String
+
+  @@index([userId])
+}
+
+model Product {
+  id              Int              @id @default(autoincrement())
+  name            String
+  description     String
+  category        ProductCategory
+  pricePerUnit    Decimal          @db.Decimal(10,2)
+  weightPerUnit   Decimal          @db.Decimal(10,3)
+  quantityOnHand  Int
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  imageUrl        String?
+}
+
+model Cart {
+  id           Int        @id @default(autoincrement())
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String     @unique
+  cartItems    CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id         Int      @id @default(autoincrement())
+  cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId     Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade) // carts can safely clear
+  productId  Int
+  quantity   Int
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  delivery     Delivery?   @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  deliveryId   Int?
+  user         User        @relation(fields: [userId], references: [id], onDelete: Restrict) // preserve history
+  userId       String
+  status       OrderStatus @default(PENDING)
+  orderItems   OrderItem[]
+
+  @@index([userId])
+  @@index([deliveryId])
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId      Int
+  product      Product  @relation(fields: [productId], references: [id], onDelete: NoAction) // keep product deletion blocked if referenced
+  productId    Int
+  quantity     Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Delivery {
+  id           Int      @id @default(autoincrement())
+  orders       Order[]
+}
