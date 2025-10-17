@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LogoutButton from "./logout-button";
 
 export default function UserLayout({
   children,
@@ -20,6 +21,7 @@ export default function UserLayout({
               >
                 Home
               </Link>
+              <LogoutButton></LogoutButton>
             </div>
           </div>
         </div>
