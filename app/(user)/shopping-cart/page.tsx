@@ -1,14 +1,11 @@
-"use server";
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getCartItems } from "./actions";
+import { getCartItems, removeCartItem } from "./actions";
+import { getProducts } from "../home/actions";
 
-// Assumes getCartItems() returns cart items with `include: { product: true }`
-// and orders by `createdAt` as you set earlier.
 export default async function ShoppingCartPage() {
-  const cartItems = await getCartItems(); // for current user inside the action
-
+  const cartItems = await getCartItems();
+  const products = await getProducts();
   // Empty state
   if (!cartItems || cartItems.length === 0) {
     return (
@@ -36,45 +33,42 @@ export default async function ShoppingCartPage() {
 
         <div className="space-y-4">
           {cartItems.map((cartItem) => {
-            const p = cartItem.product; // related Product
-            const price =
-              typeof p?.pricePerUnit === "number"
-                ? p.pricePerUnit
-                : // handle Prisma.Decimal or undefined
-                  (p?.pricePerUnit as any)?.toNumber?.() ??
-                  Number(p?.pricePerUnit ?? 0);
-
-            const weight =
-              typeof p?.weightPerUnit === "number"
-                ? p.weightPerUnit
-                : (p?.weightPerUnit as any)?.toNumber?.() ??
-                  Number(p?.weightPerUnit ?? 0);
+            const p = products.find(product => product.id === cartItem.productId);
+            const price = p.pricePerUnit.toNumber();
+            const weight = p.weightPerUnit.toNumber();
+            const subtotal = price * cartItem.quantity;
 
             return (
               <div key={cartItem.id} className="rounded-lg border bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-4">
-                  {/* Replace with actual image if you have one on Product */}
-                  <div className="h-16 w-16 rounded-md bg-gray-100" />
-
                   <div className="flex-1">
-                    <h3 className="mb-1 text-lg font-semibold">
-                      {p?.name ?? "Unnamed product"}
-                    </h3>
-                    {p?.description && (
-                      <p className="mb-2 text-gray-600">{p.description}</p>
+                    <h3 className="mb-1 text-lg font-semibold">{p.name}</h3>
+                    {p.description && (
+                      <p className="mb-2 text-sm text-gray-600">{p.description}</p>
                     )}
 
                     <div className="space-y-1 text-sm">
                       <p>
-                        <span className="font-medium">Price:</span> ${price.toFixed(2)}
+                        <span className="font-medium">Category:</span> {p.category}
                       </p>
                       <p>
-                        <span className="font-medium">Weight:</span> {weight}
+                        <span className="font-medium">Price per unit:</span> ${price.toFixed(2)}
+                      </p>
+                      <p>
+                        <span className="font-medium">Weight per unit:</span> {weight.toFixed(3)} lbs
                       </p>
                       <p>
                         <span className="font-medium">Quantity:</span> {cartItem.quantity}
                       </p>
+                      <p className="text-base font-semibold">
+                        Subtotal: ${subtotal.toFixed(2)}
+                      </p>
                     </div>
+                    <form action={removeCartItem.bind(null, cartItem.id)}>
+                    <Button type="submit" variant="destructive" size="sm">
+                      Remove
+                    </Button>
+                  </form>
                   </div>
                 </div>
               </div>
