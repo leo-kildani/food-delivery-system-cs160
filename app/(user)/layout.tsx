@@ -41,6 +41,12 @@ export default function UserLayout({
                 Home
               </Link>
               <ShoppingCartButton></ShoppingCartButton>
+              <Link
+                href="/account/details"
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Account
+              </Link>
               <LogoutButton></LogoutButton>
             </div>
           </div>
