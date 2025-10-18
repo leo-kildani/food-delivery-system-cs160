@@ -61,9 +61,22 @@ export default async function ShoppingCartPage() {
               return (
                 <div
                   key={cartItem.id}
-                  className="rounded-lg border bg-white p-4 shadow-sm"
+                  className="rounded-lg border bg-white p-4 shadow-sm relative"
                 >
-                  <div className="flex items-start gap-4">
+                  {/* Remove Button - Top Right */}
+                  <form 
+                    action={removeCartItem.bind(null, cartItem.id)} 
+                    className="absolute top-4 right-4"
+                  >
+                    <button 
+                      type="submit" 
+                      className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md transition-colors flex items-center justify-center"
+                      aria-label="Remove item"
+                    >Remove
+                    </button>
+                  </form>
+
+                  <div className="flex items-start gap-4 pr-12">
                     <div className="flex-1">
                       <h3 className="mb-1 text-lg font-semibold">{p.name}</h3>
                       {p.description && (
@@ -115,12 +128,6 @@ export default async function ShoppingCartPage() {
                           ${subtotal.toFixed(2)}
                         </p>
                       </div>
-                      
-                      <form action={removeCartItem.bind(null, cartItem.id)} className="mt-3">
-                        <Button type="submit" variant="destructive" size="sm">
-                          Remove
-                        </Button>
-                      </form>
                     </div>
                   </div>
                 </div>
