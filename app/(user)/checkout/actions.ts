@@ -5,19 +5,23 @@ import prisma from '../../../lib/prisma';
 import {createClient} from '../../../lib/supabase/server';
 import {Product} from '@prisma/client';
 
-function getUserId() {}
-export async function getCartItems() {
-  // first get userId
-  // get cart id from userId from the cart table
-  // return all cartItems with a certain cartID
+async function getUserId() {
   const supabase = await createClient();
   const {
     data: {user},
   } = await supabase.auth.getUser();
   let personal_user = await prisma.user.findUnique({where: {authId: user?.id}})
-  // console.log(personal_user)
-  let cartId =
-      await prisma.cart.findUnique({where: {userId: personal_user?.id}})
+  if (!personal_user?.id) {
+    throw new Error('User not found or user ID is undefined');
+  }
+  return personal_user.id;
+}
+export async function getCartItems() {
+  // first get userId
+  // get cart id from userId from the cart table
+  // return all cartItems with a certain cartID
+  let userId = await getUserId();
+  let cartId = await prisma.cart.findUnique({where: {userId: userId}})
   let cart_items = await prisma.cartItem.findMany({where: {cartId: cartId?.id}})
   // console.log(cart_items);
   let productPromises = cart_items.map(async (cart_item) => {
@@ -54,21 +58,12 @@ export async function checkoutAction(
           // this is autoincrement id
       }  // empty
     });
-    const supabase = await createClient();
-    const {
-      data: {user},
-    } = await supabase.auth.getUser();
-    let personal_user =
-        await prisma.user.findUnique({where: {authId: user?.id}})
-    if (!personal_user?.id) {
-      throw new Error('User not found or user ID is undefined');
-    }
-    let cart =
-        await prisma.cart.findUnique({where: {userId: personal_user?.id}})
+    let userId = await getUserId();
+    let cart = await prisma.cart.findUnique({where: {userId: userId}})
     const order = await prisma.order.create({
       data: {
         deliveryId: delivery.id,
-        userId: personal_user.id,
+        userId: userId,
         status: 'PENDING',
       }
     });
