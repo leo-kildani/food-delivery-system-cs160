@@ -2,14 +2,20 @@
 
 import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { CartItem } from "@prisma/client";
+import { CartItem, Product } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-export async function getCartItems(): Promise<CartItem[]> {
+export type CartItemWithProduct = CartItem & {
+  product: Product;
+};
+
+export async function getCartItems(): Promise<CartItemWithProduct[]> {
   const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
     return [];
   }
@@ -20,7 +26,14 @@ export async function getCartItems(): Promise<CartItem[]> {
     include: {
       cart: {
         include: {
-          cartItems: true,
+          cartItems: {
+            include: {
+              product: true,
+            },
+            orderBy: {
+              productId: 'desc', 
+            },
+          },
         },
       },
     },
@@ -30,18 +43,23 @@ export async function getCartItems(): Promise<CartItem[]> {
 }
 
 export async function removeCartItem(cartId: number) {
-    const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-
   await prisma.cartItem.delete({
     where: { id: cartId },
   });
 
-  // Revalidate the shopping cart page to show updated data
+  revalidatePath("/shopping-cart");
+}
+
+export async function updateCartItemQuantity(cartItemId: number, newQuantity: number) {
+  if (newQuantity < 1) {
+    return;
+  }
+
+  // Update the quantity
+  await prisma.cartItem.update({
+    where: { id: cartItemId },
+    data: { quantity: newQuantity },
+  });
+
   revalidatePath("/shopping-cart");
 }
