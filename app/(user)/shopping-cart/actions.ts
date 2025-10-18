@@ -31,7 +31,7 @@ export async function getCartItems(): Promise<CartItemWithProduct[]> {
               product: true,
             },
             orderBy: {
-              productId: 'desc', 
+              productId: "desc",
             },
           },
         },
@@ -50,16 +50,35 @@ export async function removeCartItem(cartId: number) {
   revalidatePath("/shopping-cart");
 }
 
-export async function updateCartItemQuantity(cartItemId: number, newQuantity: number) {
+export async function updateCartItemQuantity(
+  cartItemId: number,
+  newQuantity: number
+) {
   if (newQuantity < 1) {
-    return;
+    return { success: false, error: "Quantity must be at least 1" };
   }
 
-  // Update the quantity
   await prisma.cartItem.update({
     where: { id: cartItemId },
     data: { quantity: newQuantity },
   });
 
   revalidatePath("/shopping-cart");
+  return { success: true };
+}
+
+export async function batchUpdateCartItems(
+  updates: { id: number; quantity: number }[]
+) {
+  await prisma.$transaction(
+    updates.map(({ id, quantity }) =>
+      prisma.cartItem.update({
+        where: { id },
+        data: { quantity },
+      })
+    )
+  );
+
+  revalidatePath("/shopping-cart");
+  return { success: true };
 }
