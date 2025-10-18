@@ -4,13 +4,13 @@ import { getCartItems, checkoutAction, CheckoutState } from "./actions"
 import { Item } from "@radix-ui/react-accordion";
 
 export default function UserCheckout() {
-  // const [checkoutState, checkoutFormAction, checkoutPending] = useActionState(
-  //   checkoutAction,
-  //   {} as CheckoutState
-  // );
+  const [checkoutState, checkoutFormAction, checkoutPending] = useActionState(
+    checkoutAction,
+    {} as CheckoutState
+  );
   const [cartItems, setCartItems] = useState<any[]>([]); // cart data retrieved from database
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set()); // set of indices that are selected
-  const [quantities, setQuantities] = useState<Record<number, number>>({});
+  const [quantities, setQuantities] = useState<Record<number, number>>({}); // maps idx of cartItems to quantity
   const [loading, setLoading] = useState(true);
 
   // apparently we cannot use async FormAction in async functions
@@ -19,13 +19,10 @@ export default function UserCheckout() {
       try {
         let items = await getCartItems();
         setCartItems(items);
-
-        // const initialQuantities = items.reduce((acc, item, idx) => {
-        //   if (item.product) {
-        //     acc[idx] = item.quantity;
-        //   }
-        //   return acc;
-        // })
+        setQuantities(items.reduce((acc, item, idx) => {
+          acc[idx] = item.quantity;
+          return acc;
+        }, {} as Record<number, number>))
       } catch (error) {
         console.log("couldn't load cart items");
       } finally {
@@ -50,6 +47,16 @@ export default function UserCheckout() {
     }
   )).filter((item, idx) => selectedItems.has(idx) && item.quantity > 0);
 
+  // calculate only the selected items price and weighht
+
+  const handleQuantityChange = (change: number, idx: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [idx]: Math.max(0, prev[idx] + change)
+    }));
+    console.log(quantities)
+  }
+  
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-sm">
@@ -57,25 +64,17 @@ export default function UserCheckout() {
           <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
         </div>
         
-        <form action={async (formData: FormData) => {
-            const checkoutData = selectedItemsData.map(item => ({
-              productId: item.product?.id,
-              quantity: item.quantity,
-              pricePerUnit: item.product?.pricePerUnit ? Number(item.product.pricePerUnit) : 0
-            }));
-            formData.set('selectedItems', JSON.stringify(checkoutData));
-            const result = await checkoutAction(formData);
-            console.log(result);
-          }} className="p-6">
-          {/* <input
+        <form action={checkoutFormAction} className="p-6">
+          <input
             type="hidden"
             name="selectedItems"
             value={JSON.stringify(selectedItemsData.map(item => ({
               productId: item.product?.id,
-              quantity: item.quantity,
-              pricePerUnit: Number(item.product?.pricePerUnit ?? 0)
+              quantity: quantities[item.idx],
+              pricePerUnit: Number(item.product?.pricePerUnit ?? 0), 
+              weightPerUnit: Number(item.product?.weightPerUnit ?? 0)
             })))}
-          /> */}
+          />
           <div className="space-y-4">
             {cartItems.map(
               (
@@ -121,13 +120,15 @@ export default function UserCheckout() {
                     <div className="flex items-center space-x-3 ml-4">
                       <button 
                         type="button" 
+                        onClick={()=>handleQuantityChange(-1, idx)}
                         className="w-8 h-8 rounded-full border border-gray-300 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors"
                       >
                         −
                       </button>
-                      <span className="w-8 text-center font-semibold text-gray-900">{item.quantity}</span>
+                      <span className="w-8 text-center font-semibold text-gray-900">{quantities[idx]}</span>
                       <button 
                         type="button" 
+                        onClick={()=>handleQuantityChange(1, idx)}
                         className="w-8 h-8 rounded-full border border-gray-300 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors"
                       >
                         +
@@ -142,15 +143,15 @@ export default function UserCheckout() {
               <div className="flex justify-between items-center mb-4">
                 <span className="text-lg font-semibold text-gray-900">Total Items:</span>
                 <span className="text-lg font-bold text-gray-900">
-                  {cartItems.reduce((total, item) => total + item.quantity, 0)}
+                  {selectedItemsData.reduce((total, item) => total + quantities[item.idx], 0)}
                 </span>
               </div>
              <div className="flex justify-between items-center mb-4">
                 <span className="text-lg font-semibold text-gray-900">Total Weight:</span>
                 <span className="text-lg font-bold text-gray-900">
-                  {cartItems.reduce((total, item) => {
+                  {selectedItemsData.reduce((total, item) => {
                     const weight = item?.product?.weightPerUnit ? Number(item.product.weightPerUnit) : 0;
-                    const quantity = item.quantity || 0;
+                    const quantity = quantities[item.idx] || 0;
                     return total + (weight * quantity);
                   }, 0).toFixed(2)} lbs
                 </span>
@@ -158,9 +159,9 @@ export default function UserCheckout() {
               <div className="flex justify-between items-center mb-4">
                 <span className="text-lg font-semibold text-gray-900">Total Cost:</span>
                 <span className="text-lg font-bold text-gray-900">
-                  $ {cartItems.reduce((total, item) => {
+                  $ {selectedItemsData.reduce((total, item, idx) => {
                     const cost = item?.product?.pricePerUnit ? Number(item.product.pricePerUnit) : 0;
-                    const quantity = item.quantity || 0;
+                    const quantity =  quantities[item.idx] || 0;
                     return total + (cost * quantity);
                   }, 0).toFixed(2)}
                 </span>
@@ -172,21 +173,12 @@ export default function UserCheckout() {
                 >
                   Continue Shopping
                 </button>
-                {/* <button 
-                  onClick={handleCheckout}
-                  disabled={checkoutPending}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50"
-                >
-                  Save Selection
-                </button> */}
                 <button 
                   type="submit" 
-                  // disabled={checkoutPending}
-                  // onClick={handleCheckout}
+                  disabled={checkoutPending || selectedItems.size === 0}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50"
                 >
-                  {/* {checkoutPending ? 'Processing...' : 'Buy'} */}
-                  Buy
+                  {checkoutPending ? 'Processing...' : `Buy ${selectedItems.size} Item(s)`}
                 </button>
               </div>
             </div>

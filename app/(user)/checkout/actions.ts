@@ -5,13 +5,12 @@ import prisma from '../../../lib/prisma';
 import {createClient} from '../../../lib/supabase/server';
 import {Product} from '@prisma/client';
 
-
+function getUserId() {}
 export async function getCartItems() {
   // first get userId
   // get cart id from userId from the cart table
   // return all cartItems with a certain cartID
   const supabase = await createClient();
-
   const {
     data: {user},
   } = await supabase.auth.getUser();
@@ -42,12 +41,50 @@ export type CheckoutState = {
   formError?: string;
   fieldErrors?: Record<string, string[]>;
 };
-export async function checkoutAction(formData: FormData) {
+export async function checkoutAction(
+    prevState: CheckoutState, formData: FormData): Promise<CheckoutState> {
   console.log('here another')
   try {
     const selectedItemsJson = formData.get('selectedItems') as string;
     const selectedItems = JSON.parse(selectedItemsJson);
-    console.log(selectedItems)
+    // console.log(selectedItems);
+    // create new order with it being pending
+    const delivery = await prisma.delivery.create({
+      data: {
+          // this is autoincrement id
+      }  // empty
+    });
+    const supabase = await createClient();
+    const {
+      data: {user},
+    } = await supabase.auth.getUser();
+    let personal_user =
+        await prisma.user.findUnique({where: {authId: user?.id}})
+    if (!personal_user?.id) {
+      throw new Error('User not found or user ID is undefined');
+    }
+    let cart =
+        await prisma.cart.findUnique({where: {userId: personal_user?.id}})
+    const order = await prisma.order.create({
+      data: {
+        deliveryId: delivery.id,
+        userId: personal_user.id,
+        status: 'PENDING',
+      }
+    });
+    const productIds = selectedItems.map((item: any) => item.productId);
+
+    const orderItems = await prisma.orderItem.createMany({
+      data: selectedItems.map((item: any) => ({
+                                orderId: order.id,
+                                productId: item.productId,
+                                quantity: item.quantity
+                              }))
+    });
+    // create order items with the correct order ID
+    // remove selectedItems from realCart and update cart
+    const remove_items = await prisma.cartItem.deleteMany(
+        {where: {cartId: cart?.id, productId: {in : productIds}}})
     console.log('processing checkout')
     return {ok: true};
   } catch (error) {
