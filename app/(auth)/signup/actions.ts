@@ -112,6 +112,9 @@ export async function signUpAction(
         postalCode: parsedData.postalCode,
       },
     },
+    cart: {
+      create: {},
+    },
   };
 
   try {
