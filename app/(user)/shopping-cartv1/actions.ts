@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { CartItem, Product } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export type CartItemWithProduct = CartItem & {
   product: Product;
@@ -47,7 +48,7 @@ export async function removeCartItem(cartId: number) {
     where: { id: cartId },
   });
 
-  revalidatePath("/shopping-cart");
+  revalidatePath("/shopping-cartv1");
 }
 
 export async function updateCartItemQuantity(
@@ -63,7 +64,7 @@ export async function updateCartItemQuantity(
     data: { quantity: newQuantity },
   });
 
-  revalidatePath("/shopping-cart");
+  revalidatePath("/shopping-cartv1");
   return { success: true };
 }
 
@@ -79,6 +80,34 @@ export async function batchUpdateCartItems(
     )
   );
 
-  revalidatePath("/shopping-cart");
+  revalidatePath("/shopping-cartv1");
   return { success: true };
+}
+
+// SERVER ACTION
+export type removeItemState = {
+  ok?: boolean;
+  error?: string;
+};
+
+export async function removeCartItemAction(
+  _prevState: removeItemState,
+  formData: FormData
+): Promise<removeItemState> {
+  try {
+    const cartItemId = formData.get("cartItemId");
+    
+    if (!cartItemId) {
+      return { ok: false, error: "Cart item ID is required" };
+    }
+    
+    await removeCartItem(Number(cartItemId));
+    revalidatePath("/shopping-cartv1");
+
+    return { ok: true };
+    
+  } catch (error) {
+    console.error("Error removing cart item:", error);
+    return { ok: false, error: "Failed to remove item" };
+  }
 }

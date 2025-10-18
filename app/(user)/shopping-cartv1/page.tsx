@@ -4,10 +4,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ShoppingCartClient from "./cart-client";
 
-export default async function ShoppingCartPage() {
+export default async function ShoppingCartPagev1() {
   const cartItems = await getCartItems();
   const products = await getProducts();
-  
+
   // EMPTY CART
   if (!cartItems || cartItems.length === 0) {
     return (
@@ -29,13 +29,25 @@ export default async function ShoppingCartPage() {
       </div>
     );
   }
-
-  // Serialize Decimal fields to numbers for client component
-  const serializedProducts = products.map(p => ({
+  const serializedProducts = products.map((p) => ({
     ...p,
     pricePerUnit: p.pricePerUnit.toNumber(),
     weightPerUnit: p.weightPerUnit.toNumber(),
   }));
 
-  return <ShoppingCartClient initialCartItems={cartItems} products={serializedProducts} />;
+  const serializedCartItems = cartItems.map((item) => ({
+    ...item,
+    product: {
+      ...item.product,
+      pricePerUnit: item.product.pricePerUnit.toNumber(),
+      weightPerUnit: item.product.weightPerUnit.toNumber(),
+    },
+  }));
+
+  return (
+    <ShoppingCartClient
+      initialCartItems={serializedCartItems}
+      products={serializedProducts}
+    />
+  );
 }
