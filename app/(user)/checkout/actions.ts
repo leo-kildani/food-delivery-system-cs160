@@ -1,8 +1,8 @@
 'use server'
 
 import{convertSegmentPathToStaticExportFilename} from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
-import prisma from '../../../lib/prisma';
-import {createClient} from '../../../lib/supabase/server';
+import prisma from '@/lib/prisma';
+import {createClient} from '@/lib/supabase/server';
 import {Product} from '@prisma/client';
 
 async function getUserId() {
@@ -21,8 +21,11 @@ export async function getCartItems() {
   // get cart id from userId from the cart table
   // return all cartItems with a certain cartID
   let userId = await getUserId();
-  let cartId = await prisma.cart.findUnique({where: {userId: userId}})
-  let cart_items = await prisma.cartItem.findMany({where: {cartId: cartId?.id}})
+  let cartId = await prisma.cart.findUnique({ where: { userId: userId } })
+  if (cartId == null) {
+    return [];
+  }
+  let cart_items = await prisma.cartItem.findMany({ where: { cartId: cartId?.id } })
   // console.log(cart_items);
   let productPromises = cart_items.map(async (cart_item) => {
     const product =
