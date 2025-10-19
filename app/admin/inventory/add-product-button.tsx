@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addProductAction, AddProductState } from "./actions";
 import { useActionState, useState } from "react";
+import { ProductCategory } from "@prisma/client";
 
 export default function AddProductButton() {
   const [addProductState, addProductFormAction, addProductIsPending] =
@@ -72,10 +73,16 @@ export default function AddProductButton() {
             <div className="grid gap-3">
               <Label htmlFor="category">Category</Label>
               <select id="category" name="category">
-                <option value="FRUIT">Fruit</option>
-                <option value="VEGETABLE">Vegetable</option>
-                <option value="DAIRY">Dairy</option>
-                <option value="MEAT">Meat</option>
+                // create options in the form based on the categories in the
+                product enum
+                {Object.values(ProductCategory).map((productCat) => (
+                  // random key based on unicode value of string because next.js/react wants one
+                  <option key={productCat.codePointAt(0)} value={productCat}>
+                    {productCat
+                      .toLowerCase()
+                      .replace(/\b\w/g, (s) => s.toUpperCase())}
+                  </option>
+                ))}
               </select>
               {addProductState.fieldErrors?.category && (
                 <div className="text-red-600 text-sm mt-1">
