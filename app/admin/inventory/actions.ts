@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { $Enums, Product } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import z from "zod";
 
 export async function getProducts(): Promise<Product[]> {
@@ -73,5 +74,7 @@ export async function addProductAction(
     console.log(e);
     return { formError: "Error creating item" };
   }
+  // Updates the table after adding item
+  revalidatePath("/admin/inventory");
   return { ok: true };
 }

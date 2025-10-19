@@ -14,21 +14,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addProductAction, AddProductState } from "./actions";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 export default function AddProductButton() {
   const [addProductState, addProductFormAction, addProductIsPending] =
     useActionState(addProductAction, {} as AddProductState);
+  const [open, setOpen] = useState(false);
+
+  const handleFormSubmit = async (e: FormData) => {
+    await addProductFormAction(e);
+    console.log(addProductState);
+    console.log(addProductState.ok);
+    if (addProductState?.ok) {
+      setOpen(false);
+    }
+  };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="bg-blue-500 text-white">
           Add Item
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <form action={addProductFormAction}>
+        <form action={handleFormSubmit}>
           <DialogHeader>
             <DialogTitle>Add Item</DialogTitle>
             <DialogDescription>
@@ -95,7 +105,7 @@ export default function AddProductButton() {
                 placeholder="0.50"
                 type="number"
                 min="0"
-                step="0.05"
+                step="0.01"
               />
               {addProductState.fieldErrors?.pricePerUnit && (
                 <div className="text-red-600 text-sm mt-1">
@@ -111,7 +121,7 @@ export default function AddProductButton() {
                 placeholder="0.200"
                 type="number"
                 min="0"
-                step="0.005"
+                step="0.001"
               />
               {addProductState.fieldErrors?.weightPerUnit && (
                 <div className="text-red-600 text-sm mt-1">
