@@ -22,20 +22,20 @@ export default function AddProductButton() {
 
   return (
     <Dialog>
-      <form action={addProductFormAction}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="bg-blue-500 text-white">
-            Add Item
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+      <DialogTrigger asChild>
+        <Button variant="outline" className="bg-blue-500 text-white">
+          Add Item
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <form action={addProductFormAction}>
           <DialogHeader>
             <DialogTitle>Add Item</DialogTitle>
             <DialogDescription>
               Add a new product to the database.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4">
+          <div className="grid gap-4 py-2">
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" placeholder="Apple" type="text" />
@@ -59,7 +59,7 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
-            {/* <div className="grid gap-3">
+            <div className="grid gap-3">
               <Label htmlFor="category">Category</Label>
               <select id="category" name="category">
                 <option value="FRUIT">Fruit</option>
@@ -72,8 +72,8 @@ export default function AddProductButton() {
                   {addProductState.fieldErrors.category.join(", ")}
                 </div>
               )}
-            </div> */}
-            <div className="grid gap-3">
+            </div>
+            {/* <div className="grid gap-3">
               <Label htmlFor="category">Category</Label>
               <Input
                 id="category"
@@ -86,7 +86,7 @@ export default function AddProductButton() {
                   {addProductState.fieldErrors.category.join(", ")}
                 </div>
               )}
-            </div>
+            </div> */}
             <div className="grid gap-3">
               <Label htmlFor="pricePerUnit">Price / Unit</Label>
               <Input
@@ -152,8 +152,8 @@ export default function AddProductButton() {
               {addProductIsPending ? "Adding Item" : "Add Item"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }

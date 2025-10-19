@@ -26,7 +26,7 @@ const AddProductSchema = z.object({
       message: "Must be a number with exactly 3 decimal places",
     })
     .transform(Number),
-  quantityOnHand: z.number().int({ error: "Must be an integer" }),
+  quantityOnHand: z.coerce.number().int({ error: "Must be an integer" }),
 });
 
 export type AddProductState = {
