@@ -1,12 +1,22 @@
-import { getCartItems } from "./actions";
-import { getProducts } from "../home/actions";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ShoppingCartClient from "./cart-client";
+import { redirect } from "next/navigation";
+import { getUserCart } from "./actions";
 
 export default async function ShoppingCartPagev1() {
-  const cartItems = await getCartItems();
-  const products = await getProducts();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/signup");
+  }
+
+  const cart = await getUserCart(user.id);
+  const cartItems = cart.cartItems;
 
   // EMPTY CART
   if (!cartItems || cartItems.length === 0) {
@@ -29,11 +39,6 @@ export default async function ShoppingCartPagev1() {
       </div>
     );
   }
-  const serializedProducts = products.map((p) => ({
-    ...p,
-    pricePerUnit: p.pricePerUnit.toNumber(),
-    weightPerUnit: p.weightPerUnit.toNumber(),
-  }));
 
   const serializedCartItems = cartItems.map((item) => ({
     ...item,
@@ -44,10 +49,5 @@ export default async function ShoppingCartPagev1() {
     },
   }));
 
-  return (
-    <ShoppingCartClient
-      initialCartItems={serializedCartItems}
-      products={serializedProducts}
-    />
-  );
+  return <ShoppingCartClient initialCartItems={serializedCartItems} />;
 }

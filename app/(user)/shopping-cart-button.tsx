@@ -20,7 +20,7 @@ export default function ShoppingCartButton({
         variant="ghost"
         className="flex items-center gap-2 pr-3"
       >
-        <Link href="/shopping-cartv1" aria-label="Go to shopping cart">
+        <Link href="/shopping-cart" aria-label="Go to shopping cart">
           <Image
             src="/shopping-cart.svg"
             alt="Shopping cart icon"
