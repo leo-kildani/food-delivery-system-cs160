@@ -109,7 +109,7 @@ export default function ShoppingCartClient({
 
   // Calculate delievery Fee
   let deliveryFee = 0;
-  if (totalCartWeight > 20 ) { deliveryFee = 10; }
+  if (totalCartWeight > 20 ) { deliveryFee = 10; totalCartCost += 10; }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
