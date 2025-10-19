@@ -22,7 +22,7 @@ const AddProductSchema = z.object({
     .transform(Number),
   weightPerUnit: z
     .string()
-    .regex(/^(0|[1-9]\d*)\.\d{2}$/, {
+    .regex(/^(0|[1-9]\d*)\.\d{3}$/, {
       message: "Must be a number with exactly 3 decimal places",
     })
     .transform(Number),
