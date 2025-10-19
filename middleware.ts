@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
     )
   ) {
     // TODO: create error page
-    return NextResponse.redirect("/login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
   return response;
 }
