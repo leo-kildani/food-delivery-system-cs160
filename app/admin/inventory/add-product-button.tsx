@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addProductAction, AddProductState } from "./actions";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { ProductCategory } from "@prisma/client";
 
 export default function AddProductButton() {
@@ -22,14 +22,11 @@ export default function AddProductButton() {
     useActionState(addProductAction, {} as AddProductState);
   const [open, setOpen] = useState(false);
 
-  const handleFormSubmit = async (e: FormData) => {
-    await addProductFormAction(e);
-    console.log(addProductState);
-    console.log(addProductState.ok);
+  useEffect(() => {
     if (addProductState?.ok) {
       setOpen(false);
     }
-  };
+  }, [addProductState?.ok]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -39,7 +36,7 @@ export default function AddProductButton() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <form action={handleFormSubmit}>
+        <form action={addProductFormAction}>
           <DialogHeader>
             <DialogTitle>Add Item</DialogTitle>
             <DialogDescription>
@@ -73,8 +70,7 @@ export default function AddProductButton() {
             <div className="grid gap-3">
               <Label htmlFor="category">Category</Label>
               <select id="category" name="category">
-                // create options in the form based on the categories in the
-                product enum
+                {/* create options in the form based on the categories in the product enum */}
                 {Object.values(ProductCategory).map((productCat) => (
                   // random key based on unicode value of string because next.js/react wants one
                   <option key={productCat.codePointAt(0)} value={productCat}>
@@ -90,20 +86,6 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
-            {/* <div className="grid gap-3">
-              <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
-                name="category"
-                defaultValue="FRUIT"
-                type="text"
-              />
-              {addProductState.fieldErrors?.category && (
-                <div className="text-red-600 text-sm mt-1">
-                  {addProductState.fieldErrors.category.join(", ")}
-                </div>
-              )}
-            </div> */}
             <div className="grid gap-3">
               <Label htmlFor="pricePerUnit">Price / Unit</Label>
               <Input
