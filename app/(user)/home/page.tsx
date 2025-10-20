@@ -24,7 +24,7 @@ function HomePageContent() {
 
   // Handle search from URL params
   useEffect(() => {
-    const query = searchParams.get('search');
+    const query = searchParams.get("search");
     if (query) {
       handleSearch(query);
     } else {
@@ -36,7 +36,7 @@ function HomePageContent() {
   const handleSearch = async (query: string) => {
     setIsSearching(true);
     setSearchQuery(query);
-    
+
     try {
       const results = await searchProducts(query);
       setSearchResults(results);
@@ -55,18 +55,21 @@ function HomePageContent() {
     <div className="min-h-screen bg-gray-50">
       {/* Loading Overlay */}
       <LoadingOverlay isVisible={isSearching} />
-      
+
       {/* Results Section */}
       <div className="p-6">
         {/* Search Status */}
         {searchQuery && (
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              {isSearching ? "Searching..." : `Search results for "${searchQuery}"`}
+              {isSearching
+                ? "Searching..."
+                : `Search results for "${searchQuery}"`}
             </h2>
             {searchResults.length > 0 && (
               <p className="text-gray-600">
-                Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                Found {searchResults.length} result
+                {searchResults.length !== 1 ? "s" : ""}
               </p>
             )}
           </div>
@@ -76,8 +79,18 @@ function HomePageContent() {
         {isNoResults && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="mx-auto h-12 w-12"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -121,7 +134,9 @@ function HomePageContent() {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50 p-6">Loading...</div>}>
+    <Suspense
+      fallback={<div className="min-h-screen bg-gray-50 p-6">Loading...</div>}
+    >
       <HomePageContent />
     </Suspense>
   );
