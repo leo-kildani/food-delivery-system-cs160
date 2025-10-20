@@ -7,28 +7,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
 import { addAddressAction, DeliveryAddressState } from "./actions";
-import { User } from "@prisma/client";
 
 interface AddressFormProps {
-  user: User;
+  userId: string;
 }
 
-export function AddressForm({ user }: AddressFormProps) {
+export function AddressForm({ userId }: AddressFormProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [state, formAction, isPending] = useActionState(
-    addAddressAction,
-    {} as DeliveryAddressState
-  );
+  const [addAddressState, addAddressFormAction, addAddressIsPending] =
+    useActionState(
+      async (prevState: DeliveryAddressState, formData: FormData) => {
+        const result = await addAddressAction(prevState, formData);
+        if (result.ok) {
+          setIsOpen(false);
+        }
+        return result;
+      },
+      {} as DeliveryAddressState
+    );
 
   const handleClose = () => {
     setIsOpen(false);
   };
-
-  useEffect(() => {
-    if (state?.ok) {
-      handleClose();
-    }
-  }, [state?.ok]);
 
   if (!isOpen) {
     return (
@@ -57,23 +57,25 @@ export function AddressForm({ user }: AddressFormProps) {
           </button>
         </div>
 
-        {state?.formError && (
-          <div className="text-red-500 text-sm mb-4">{state.formError}</div>
+        {addAddressState?.formError && (
+          <div className="text-red-500 text-sm mb-4">
+            {addAddressState.formError}
+          </div>
         )}
 
-        <form action={formAction} className="space-y-4">
-          <Input type="hidden" name="userId" value={user.id} />
+        <form action={addAddressFormAction}>
+          <Input type="hidden" name="userId" value={userId} />
           <div className="space-y-2">
-            <Label htmlFor="street">Street Address</Label>
+            <Label htmlFor="streetAddress">Street Address</Label>
             <Input
-              id="street"
-              name="street"
+              id="streetAddress"
+              name="streetAddress"
               placeholder="123 Main St"
               required
             />
-            {state?.fieldErrors?.street && (
+            {addAddressState?.fieldErrors?.streetAddress && (
               <p className="text-red-500 text-sm">
-                {state.fieldErrors.street[0]}
+                {addAddressState.fieldErrors.streetAddress[0]}
               </p>
             )}
           </div>
@@ -87,9 +89,9 @@ export function AddressForm({ user }: AddressFormProps) {
                 placeholder="San Francisco"
                 required
               />
-              {state?.fieldErrors?.city && (
+              {addAddressState?.fieldErrors?.city && (
                 <p className="text-red-500 text-sm">
-                  {state.fieldErrors.city[0]}
+                  {addAddressState.fieldErrors.city[0]}
                 </p>
               )}
             </div>
@@ -102,9 +104,9 @@ export function AddressForm({ user }: AddressFormProps) {
                 maxLength={2}
                 required
               />
-              {state?.fieldErrors?.stateCode && (
+              {addAddressState?.fieldErrors?.stateCode && (
                 <p className="text-red-500 text-sm">
-                  {state.fieldErrors.stateCode[0]}
+                  {addAddressState.fieldErrors.stateCode[0]}
                 </p>
               )}
             </div>
@@ -120,26 +122,30 @@ export function AddressForm({ user }: AddressFormProps) {
                 maxLength={5}
                 required
               />
-              {state?.fieldErrors?.postalCode && (
+              {addAddressState?.fieldErrors?.postalCode && (
                 <p className="text-red-500 text-sm">
-                  {state.fieldErrors.postalCode[0]}
+                  {addAddressState.fieldErrors.postalCode[0]}
                 </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="aptNumber">Apt/Suite (Optional)</Label>
               <Input id="aptNumber" name="aptNumber" placeholder="Apt 123" />
-              {state?.fieldErrors?.aptNumber && (
+              {addAddressState?.fieldErrors?.aptNumber && (
                 <p className="text-red-500 text-sm">
-                  {state.fieldErrors.aptNumber[0]}
+                  {addAddressState.fieldErrors.aptNumber[0]}
                 </p>
               )}
             </div>
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button type="submit" disabled={isPending} className="flex-1">
-              {isPending ? "Saving..." : "Save Address"}
+            <Button
+              type="submit"
+              disabled={addAddressIsPending}
+              className="flex-1"
+            >
+              {addAddressIsPending ? "Saving..." : "Save Address"}
             </Button>
             <Button
               type="button"

@@ -82,6 +82,7 @@ export async function addAddressAction(
       data: address,
     });
   } catch (e) {
+    console.log(e);
     return { formError: "Error creating address" };
   }
   revalidatePath("/account/addresses");
@@ -102,6 +103,6 @@ export async function deleteAddressAction(
   } catch (e) {
     return { formError: "Error Deleting Address" };
   }
-  revalidatePath("/dashboard/addresses");
+  revalidatePath("/account/addresses");
   return { ok: true };
 }

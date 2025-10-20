@@ -26,7 +26,7 @@ export default async function AddressPage() {
           />
         ))}
 
-        <AddressForm user={user} />
+        <AddressForm userId={user.id} />
       </div>
     </div>
   );
