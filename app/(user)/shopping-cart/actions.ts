@@ -8,30 +8,32 @@ const cartWithItemsAndProduct = Prisma.validator<Prisma.CartDefaultArgs>()({
   include: {
     cartItems: {
       include: {
-        product: true
-      }
-    }
-  }
-}); 
+        product: true,
+      },
+    },
+  },
+});
 
-export type CartWithItemsAndProduct = Prisma.CartGetPayload<typeof cartWithItemsAndProduct>;
-export type SerializedCartItem = CartItem & { product: Omit<Product, "pricePerUnit" | "weightPerUnit"> & { pricePerUnit: number; weightPerUnit: number; }; };
+export type CartWithItemsAndProduct = Prisma.CartGetPayload<
+  typeof cartWithItemsAndProduct
+>;
+export type SerializedCartItem = CartItem & {
+  product: Omit<Product, "pricePerUnit" | "weightPerUnit"> & {
+    pricePerUnit: number;
+    weightPerUnit: number;
+  };
+};
 
 export async function getUserCart(
   userId: string
 ): Promise<CartWithItemsAndProduct> {
   // First, ensure the user exists in the database
   let user = await prisma.user.findUnique({
-    where: { authId: userId }
+    where: { authId: userId },
   });
 
-  // If user doesn't exist, create them
   if (!user) {
-    user = await prisma.user.create({
-      data: {
-        authId: userId,
-      }
-    });
+    throw Error("User not found");
   }
 
   let cart = await prisma.cart.findUnique({
