@@ -19,6 +19,7 @@ export default async function AdminInventory() {
             columns={columns}
             data={products.map((product) => {
               return {
+                id: product.id,
                 name: product.name,
                 description: product.description,
                 category: product.category,

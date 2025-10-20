@@ -20,12 +20,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import TableActionDropdown from "./table-action-dropdown";
+import { TableProduct } from "./columns";
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends TableProduct, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -60,6 +63,10 @@ export function DataTable<TData, TValue>({
                   </TableHead>
                 );
               })}
+              {/* Actions */}
+              <TableHead key={headerGroup.headers.length + 1}>
+                Actions
+              </TableHead>
             </TableRow>
           ))}
         </TableHeader>
@@ -75,6 +82,11 @@ export function DataTable<TData, TValue>({
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
+                {/* Actions */}
+
+                <TableCell>
+                  <TableActionDropdown productRow={row.original} />
+                </TableCell>
               </TableRow>
             ))
           ) : (
