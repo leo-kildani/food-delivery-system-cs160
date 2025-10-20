@@ -1,8 +1,6 @@
-"use client";
-
 import Link from "next/link";
 import LogoutButton from "./logout-button";
-import NavigationSearch from "./components/navigation-search";
+import NavigationSearch from "@/components/navigation-search";
 import ShoppingCartButton from "./shopping-cart-button";
 
 export default function UserLayout({

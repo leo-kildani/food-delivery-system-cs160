@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { getProducts, ProductWithNumbers } from "./actions";
 import { searchProducts, SearchResult } from "./search-actions";
-import LoadingOverlay from "../components/loading-overlay";
+import LoadingOverlay from "@/components/loading-overlay";
 
 function HomePageContent() {
   const [products, setProducts] = useState<ProductWithNumbers[]>([]);

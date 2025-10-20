@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, X, Clock } from "lucide-react";
 import { useSearchHistory } from "@/hooks/use-search-history";
-import LoadingOverlay from "./loading-overlay";
+import LoadingOverlay from "@/components/loading-overlay";
 
 export default function NavigationSearch() {
   const [query, setQuery] = useState("");
@@ -21,7 +21,7 @@ export default function NavigationSearch() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
-        historyRef.current && 
+        historyRef.current &&
         !historyRef.current.contains(event.target as Node) &&
         inputRef.current &&
         !inputRef.current.contains(event.target as Node)
@@ -46,7 +46,7 @@ export default function NavigationSearch() {
       // Navigate to home page with search query
       router.push(`/home?search=${encodeURIComponent(query.trim())}`);
       setShowHistory(false);
-      
+
       // Reset loading state after navigation
       setTimeout(() => {
         setIsSearching(false);
@@ -81,7 +81,7 @@ export default function NavigationSearch() {
     <div className="relative w-full">
       {/* Loading Overlay */}
       <LoadingOverlay isVisible={isSearching} />
-      
+
       {/* Search Input */}
       <div className="relative flex items-center">
         <Input
@@ -94,7 +94,7 @@ export default function NavigationSearch() {
           onFocus={handleInputFocus}
           className="pr-20 pl-4 h-10 bg-white/90 border-white/30 text-gray-900 placeholder:text-gray-500 focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
         />
-        
+
         {/* Clear Button */}
         {query && (
           <Button

@@ -1,5 +1,3 @@
-"use client";
-
 interface LoadingOverlayProps {
   isVisible: boolean;
 }
@@ -17,4 +15,3 @@ export default function LoadingOverlay({ isVisible }: LoadingOverlayProps) {
     </div>
   );
 }
-
