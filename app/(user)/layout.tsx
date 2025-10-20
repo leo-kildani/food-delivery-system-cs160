@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LogoutButton from "./logout-button";
+import ShoppingCartButton from "./shopping-cart-button";
 
 export default function UserLayout({
   children,
@@ -21,12 +22,7 @@ export default function UserLayout({
               >
                 Home
               </Link>
-              <Link
-                href="/checkout"
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Checkout 
-              </Link>
+              <ShoppingCartButton></ShoppingCartButton>
               <LogoutButton></LogoutButton>
             </div>
           </div>
