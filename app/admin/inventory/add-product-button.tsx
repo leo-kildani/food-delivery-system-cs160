@@ -44,6 +44,7 @@ export default function AddProductButton() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Name */}
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" placeholder="Apple" type="text" />
@@ -53,6 +54,8 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
+
+            {/* Description */}
             <div className="grid gap-3">
               <Label htmlFor="description">Description</Label>
               <Input
@@ -67,6 +70,8 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
+
+            {/* Categories */}
             <div className="grid gap-3">
               <Label htmlFor="category">Category</Label>
               <select id="category" name="category">
@@ -86,6 +91,8 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
+
+            {/* Price per Unit */}
             <div className="grid gap-3">
               <Label htmlFor="pricePerUnit">Price / Unit</Label>
               <Input
@@ -102,6 +109,8 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
+
+            {/* Weight per Unit */}
             <div className="grid gap-3">
               <Label htmlFor="weightPerUnit">Weight / Unit</Label>
               <Input
@@ -118,6 +127,8 @@ export default function AddProductButton() {
                 </div>
               )}
             </div>
+
+            {/* Quantity on Hand */}
             <div className="grid gap-3">
               <Label htmlFor="quantityOnHand">Quantity</Label>
               <Input

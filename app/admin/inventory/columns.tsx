@@ -18,11 +18,25 @@ export type TableProduct = {
 export const columns: ColumnDef<TableProduct>[] = [
   {
     accessorKey: "name",
-    header: "Name",
+    header: ({ column }) => {
+      return (
+        <Button variant="ghost" onClick={() => column.toggleSorting()}>
+          Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
   },
   {
     accessorKey: "category",
-    header: "Category",
+    header: ({ column }) => {
+      return (
+        <Button variant="ghost" onClick={() => column.toggleSorting()}>
+          Category
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
   },
   {
     accessorKey: "description",
@@ -30,7 +44,16 @@ export const columns: ColumnDef<TableProduct>[] = [
   },
   {
     accessorKey: "pricePerUnit",
-    header: () => <div className="text-right">Price</div>,
+    header: ({ column }) => {
+      return (
+        <div className="justify-end">
+          <Button variant="ghost" onClick={() => column.toggleSorting()}>
+            <div className="text-right">Price</div>
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      );
+    },
     cell: ({ row }) => {
       const pricePerUnit = parseFloat(row.getValue("pricePerUnit"));
       const formatted = new Intl.NumberFormat("en-US", {
@@ -38,7 +61,7 @@ export const columns: ColumnDef<TableProduct>[] = [
         currency: "USD",
       }).format(pricePerUnit);
 
-      return <div className="text-right">{formatted}</div>;
+      return <div>{formatted}</div>;
     },
   },
   {
@@ -49,10 +72,7 @@ export const columns: ColumnDef<TableProduct>[] = [
     accessorKey: "quantityOnHand",
     header: ({ column }) => {
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+        <Button variant="ghost" onClick={() => column.toggleSorting()}>
           Amount
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>

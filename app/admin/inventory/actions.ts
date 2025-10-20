@@ -137,6 +137,7 @@ export async function editProductAction(
   };
   //console.log(input);
 
+  // Reuses the Add Product input handling
   const parsed = AddProductSchema.safeParse(input);
   // fields are valid check
   if (!parsed.success) {
