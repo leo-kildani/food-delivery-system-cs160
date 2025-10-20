@@ -6,6 +6,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 export type TableProduct = {
+  id: number;
   name: string;
   description: string;
   category: $Enums.ProductCategory;
@@ -28,10 +29,6 @@ export const columns: ColumnDef<TableProduct>[] = [
     header: "Description",
   },
   {
-    accessorKey: "weightPerUnit",
-    header: "Weight",
-  },
-  {
     accessorKey: "pricePerUnit",
     header: () => <div className="text-right">Price</div>,
     cell: ({ row }) => {
@@ -43,6 +40,10 @@ export const columns: ColumnDef<TableProduct>[] = [
 
       return <div className="text-right">{formatted}</div>;
     },
+  },
+  {
+    accessorKey: "weightPerUnit",
+    header: "Weight",
   },
   {
     accessorKey: "quantityOnHand",
