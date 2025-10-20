@@ -3,6 +3,7 @@
 import Link from "next/link";
 import LogoutButton from "./logout-button";
 import NavigationSearch from "./components/navigation-search";
+import ShoppingCartButton from "./shopping-cart-button";
 
 export default function UserLayout({
   children,
@@ -41,8 +42,8 @@ export default function UserLayout({
               >
                 Home
               </Link>
-              <div className="h-6 w-px bg-white/30"></div>
-              <LogoutButton />
+              <ShoppingCartButton></ShoppingCartButton>
+              <LogoutButton></LogoutButton>
             </div>
           </div>
         </div>
