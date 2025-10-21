@@ -1,6 +1,5 @@
 import Link from "next/link";
 import LogoutButton from "./logout-button";
-import NavigationSearch from "@/components/navigation-search";
 import ShoppingCartButton from "./shopping-cart-button";
 
 export default function UserLayout({
@@ -25,11 +24,6 @@ export default function UserLayout({
                   Online Food System
                 </span>
               </div>
-            </div>
-
-            {/* Center Section - Search */}
-            <div className="flex-1 max-w-2xl mx-8 hidden lg:block">
-              <NavigationSearch />
             </div>
 
             {/* Right Section - Navigation & Actions */}
