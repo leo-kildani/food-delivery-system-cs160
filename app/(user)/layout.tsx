@@ -1,12 +1,18 @@
 import Link from "next/link";
 import LogoutButton from "./logout-button";
 import ShoppingCartButton from "./shopping-cart-button";
+import { getLoggedInUser } from "./actions";
 
-export default function UserLayout({
+export default async function UserLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getLoggedInUser();
+  if (!user) {
+    return <></>;
+  }
+
   return (
     <div>
       <nav className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg border-b border-blue-500">
@@ -39,6 +45,13 @@ export default function UserLayout({
                 className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
               >
                 Account
+              </Link>
+              <Link
+                href="/admin/inventory"
+                className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
+                hidden={user.role !== "ADMIN"}
+              >
+                Admin
               </Link>
               <ShoppingCartButton></ShoppingCartButton>
               <LogoutButton></LogoutButton>
