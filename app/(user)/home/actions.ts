@@ -23,6 +23,15 @@ async function getUserId() {
 export async function getProducts(): Promise<Product[]> {
   return await prisma.product.findMany();
 }
+export async function getCartId(): Promise<number> {
+  let userId = await getUserId();
+  let cart = await prisma.cart.findUnique({ where: { userId: userId } });
+  if (cart == null) {
+    return -1 // should never happen due to database constraint
+  } else {
+    return cart.id;
+  }
+}
 export type AddToCartState = {
   success?: boolean;
   error?: string;
@@ -34,6 +43,7 @@ export async function addToCartAction(_prevState: AddToCartState, formData: Form
     const productId = parseInt(formData.get('productId') as string);
     const quantity = parseInt(formData.get('quantity') as string);
     let userId = await getUserId();
+    console.log(cartId, userId)
     const addedItem = await prisma.cartItem.upsert({
       where: {
         cartId_productId: {

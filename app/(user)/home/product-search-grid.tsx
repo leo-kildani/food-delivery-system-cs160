@@ -9,20 +9,19 @@ import { ProductCard } from "./product-card";
 interface ProductSearchProps {
   products: SerializedProduct[];
   cart: CartItem[];
+  cartId: number;
 }
 
-export default function ProductSearchGrid({ products , cart}: ProductSearchProps) {
+export default function ProductSearchGrid({ products , cart, cartId}: ProductSearchProps) {
   const [userQuery, setUserQuery] = useState("");
   const [debounced] = useDebounce(userQuery, 500);
   // check if a certain product is already in cart and keep a list of that
   let cartItemMap: Map<number, number> = new Map();
-  let cartId = -1
-  if (cart.length > 0) {
-    cartId = cart[0].cartId;
-  }
+
   cart.forEach((cartItem) => {
     cartItemMap.set(cartItem.product.id, cartItem.quantity);
   })
+
   const fuse = useMemo(
     () =>
       new Fuse(products, {
