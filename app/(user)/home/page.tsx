@@ -1,31 +1,30 @@
-"use server";
-
+import { Product } from "@prisma/client";
 import { getProducts } from "./actions";
+import { redirect } from "next/navigation";
+import ProductSearchGrid from "./product-search-grid";
+import { getLoggedInUser } from "@/app/(user)/actions";
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const user = await getLoggedInUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+  const products: Product[] = await getProducts();
+
+  // serialize products to pass to client components
+  const serializedProducts = products.map((p) => ({
+    ...p,
+    pricePerUnit: p.pricePerUnit.toNumber(),
+    weightPerUnit: p.weightPerUnit.toNumber(),
+  }));
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-      {products.map((product) => (
-        <div key={product.id} className="border rounded-lg p-4 shadow-md">
-          <h3 className="text-lg font-semibold mb-2">{product.name}</h3>
-          <p className="text-gray-600 mb-2">{product.description}</p>
-          <div className="space-y-1">
-            <p className="text-sm">
-              <span className="font-medium">Price:</span> $
-              {product.pricePerUnit.toNumber()}
-            </p>
-            <p className="text-sm">
-              <span className="font-medium">Weight:</span>{" "}
-              {product.weightPerUnit.toNumber()}
-            </p>
-            <p className="text-sm">
-              <span className="font-medium">Quantity:</span>{" "}
-              {product.quantityOnHand}
-            </p>
-          </div>
-        </div>
-      ))}
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Products</h1>
+
+      {/* Search + grid rendering moved to a client component */}
+      <ProductSearchGrid products={serializedProducts} />
     </div>
   );
 }
