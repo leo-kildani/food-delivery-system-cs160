@@ -4,7 +4,11 @@ import { Input } from "@/components/ui/input";
 import { useActionState } from "react";
 import { signUpAction, SignUpState } from "./actions";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 export default function SignUpForm() {
   const [signUpState, signUpFormAction, signUpIsPending] = useActionState(
@@ -13,156 +17,276 @@ export default function SignUpForm() {
   );
 
   return (
-    <div>
-      {signUpState.formError && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {signUpState.formError}
+    <div className="min-h-screen flex items-center justify-center p-4 bg-stone-50 py-12 font-[Helvetica,Arial,sans-serif]">
+      <div className="w-full max-w-xl">
+        {/* Title */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-emerald-800">Sign Up</h1>
         </div>
-      )}
-      <form action={signUpFormAction}>
-        <div>
-          <label htmlFor="firstName" className="block text-sm font-medium mb-1">
-            First Name
-          </label>
-          <Input
-            id="firstName"
-            name="firstName"
-            placeholder="John"
-            type="text"
-          ></Input>
-          {signUpState.fieldErrors?.firstName && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.firstName.join(", ")}
+
+        {/* Sign Up Card */}
+        <Card className="border-none shadow-xl bg-white">
+          <CardContent className="px-4 py-4">
+            {signUpState.formError && (
+              <Alert className="mb-3 border-red-200 bg-red-50">
+                <AlertDescription className="text-red-700 text-sm">
+                  {signUpState.formError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <form action={signUpFormAction} className="space-y-3">
+              {/* Name Fields - Side by Side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName" className="text-xs font-medium text-emerald-800">
+                    First Name
+                  </Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    placeholder="First Name"
+                    type="text"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.firstName && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.firstName.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName" className="text-xs font-medium text-emerald-800">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    placeholder="Last Name"
+                    type="text"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.lastName && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.lastName.join(", ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-medium text-emerald-800">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  placeholder="name@example.com"
+                  type="email"
+                  required
+                  className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                />
+                {signUpState.fieldErrors?.email && (
+                  <p className="text-red-600 text-xs flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                    {signUpState.fieldErrors.email.join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {/* Password Fields - Side by Side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs font-medium text-emerald-800">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.password && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.password.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-emerald-800">
+                    Confirm Password
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.confirmPassword && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.confirmPassword.join(", ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Address Section Header */}
+              <div className="pt-1.5">
+                <h3 className="text-sm font-semibold text-emerald-800 mb-2">Delivery Address</h3>
+              </div>
+
+              {/* Street Address */}
+              <div className="space-y-1.5">
+                <Label htmlFor="streetAddress" className="text-xs font-medium text-emerald-800">
+                  Street Address
+                </Label>
+                <Input
+                  id="streetAddress"
+                  name="streetAddress"
+                  placeholder="123 Main St"
+                  type="text"
+                  required
+                  className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                />
+                {signUpState.fieldErrors?.streetAddress && (
+                  <p className="text-red-600 text-xs flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                    {signUpState.fieldErrors.streetAddress.join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {/* Apartment Number */}
+              <div className="space-y-1.5">
+                <Label htmlFor="aptNumber" className="text-xs font-medium text-emerald-800">
+                  Apartment Number <span className="text-gray-500 text-xs">(Optional)</span>
+                </Label>
+                <Input
+                  id="aptNumber"
+                  name="aptNumber"
+                  placeholder=""
+                  type="text"
+                  className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                />
+                {signUpState.fieldErrors?.aptNumber && (
+                  <p className="text-red-600 text-xs flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                    {signUpState.fieldErrors.aptNumber.join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {/* City, State, Postal - Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5 md:col-span-1">
+                  <Label htmlFor="city" className="text-xs font-medium text-emerald-800">
+                    City
+                  </Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    placeholder="San Jose"
+                    type="text"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.city && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.city.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="stateCode" className="text-xs font-medium text-emerald-800">
+                    State
+                  </Label>
+                  <Input
+                    id="stateCode"
+                    name="stateCode"
+                    placeholder="CA"
+                    type="text"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.stateCode && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.stateCode.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="postalCode" className="text-xs font-medium text-emerald-800">
+                    Zip Code
+                  </Label>
+                  <Input
+                    id="postalCode"
+                    name="postalCode"
+                    placeholder="94102"
+                    type="text"
+                    required
+                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  />
+                  {signUpState.fieldErrors?.postalCode && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                      {signUpState.fieldErrors.postalCode.join(", ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={signUpIsPending}
+                className="w-full h-9 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 mt-4 text-sm"
+              >
+                {signUpIsPending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Signing Up...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Create Account
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+
+          <CardFooter className="flex flex-col space-y-4 border-t border-emerald-100 pt-6 pb-6">
+            <div className="text-center text-base text-emerald-700">
+              Already have an account?{" "}
+              <Link 
+                href="/login" 
+                className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors inline-flex items-center gap-1"
+              >
+                Log In
+                <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
-          )}
-        </div>
-        <div>
-          <label htmlFor="lastName" className="block text-sm font-medium mb-1">
-            Last Name
-          </label>
-          <Input
-            id="lastName"
-            name="lastName"
-            placeholder="Doe"
-            type="text"
-          ></Input>
-          {signUpState.fieldErrors?.lastName && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.lastName.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-1">
-            Email
-          </label>
-          <Input
-            id="email"
-            name="email"
-            placeholder="name@example.com"
-            type="email"
-          ></Input>
-          {signUpState.fieldErrors?.email && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.email.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-1">
-            Password
-          </label>
-          <Input id="password" name="password" type="password"></Input>
-          {signUpState.fieldErrors?.password && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.password.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium mb-1"
-          >
-            Confirm Password
-          </label>
-          <Input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-          ></Input>
-          {signUpState.fieldErrors?.confirmPassword && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.confirmPassword.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor="streetAddress"
-            className="block text-sm font-medium mb-1"
-          >
-            Street Address
-          </label>
-          <Input id="streetAddress" name="streetAddress" type="text"></Input>
-          {signUpState.fieldErrors?.streetAddress && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.streetAddress.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label htmlFor="aptNumber" className="block text-sm font-medium mb-1">
-            Apartment Number
-          </label>
-          <Input id="aptNumber" name="aptNumber" type="text"></Input>
-          {signUpState.fieldErrors?.aptNumber && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.aptNumber.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label htmlFor="city" className="block text-sm font-medium mb-1">
-            City
-          </label>
-          <Input id="city" name="city" type="text"></Input>
-          {signUpState.fieldErrors?.city && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.city.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label htmlFor="stateCode" className="block text-sm font-medium mb-1">
-            State Code
-          </label>
-          <Input id="stateCode" name="stateCode" type="text"></Input>
-          {signUpState.fieldErrors?.stateCode && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.stateCode.join(", ")}
-            </div>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor="postalCode"
-            className="block text-sm font-medium mb-1"
-          >
-            Postal Code
-          </label>
-          <Input id="postalCode" name="postalCode" type="number"></Input>
-          {signUpState.fieldErrors?.postalCode && (
-            <div className="text-red-600 text-sm mt-1">
-              {signUpState.fieldErrors.postalCode.join(", ")}
-            </div>
-          )}
-        </div>
-        <Button type="submit" disabled={signUpIsPending}>
-          {signUpIsPending ? "Signing Up..." : "Sign Up"}
-        </Button>
-      </form>
-      <Link href="/login">Log In</Link>
+          </CardFooter>
+        </Card>
+
+      </div>
     </div>
   );
 }
