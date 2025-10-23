@@ -18,7 +18,7 @@ interface AddressFormProps {
 export function AddressForm({ user }: AddressFormProps) {
   // required local states
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState("");
   const [mapsError, setMapsError] = useState("");
 
   // save delivery address server action
@@ -27,7 +27,7 @@ export function AddressForm({ user }: AddressFormProps) {
       const newState = await addAddressAction(prevState, formData);
       if (newState.ok) {
         setIsOpen(false);
-        setSelectedAddress(null);
+        setSelectedAddress("");
         setMapsError("");
       }
       return newState;
@@ -122,7 +122,7 @@ export function AddressForm({ user }: AddressFormProps) {
               // check if real address selected from autocomplete
               if (!place.location) {
                 setMapsError("Please select a valid address from the dropdown");
-                setSelectedAddress(null);
+                setSelectedAddress("");
                 return;
               }
 
@@ -135,9 +135,10 @@ export function AddressForm({ user }: AddressFormProps) {
 
               if (distance > RADIUS_METERS) {
                 setMapsError("Delivery address unreachable");
-                setSelectedAddress(null);
+                setSelectedAddress("");
                 // @ts-ignore
                 placeAutocomplete.value = "";
+                return;
               }
 
               console.log(place.formattedAddress);
@@ -147,21 +148,21 @@ export function AddressForm({ user }: AddressFormProps) {
 
           // Anytime input is deleted or changed from selected, disable saving
           placeAutocomplete.addEventListener("input", () => {
-            setSelectedAddress(null);
+            setSelectedAddress("");
             setMapsError("");
           });
         }
       } catch (e) {
         console.log(e);
-        setMapsError("Error loading map");
+        setMapsError("Error loading Address Form");
       }
     };
     initMaps();
-  }, [isOpen]);
+  }, []);
 
   const handleClose = () => {
     setIsOpen(false);
-    setSelectedAddress(null);
+    setSelectedAddress("");
     setMapsError("");
     // Reset autocomplete ref when closing since DOM will be unmounted
     // Clean up autocomplete element
@@ -226,7 +227,7 @@ export function AddressForm({ user }: AddressFormProps) {
           </div>
 
           {/* Apartment Number (Optional) */}
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="aptNumber">Apt/Suite (Optional)</Label>
             <Input id="aptNumber" name="aptNumber" placeholder="Apt 123" />
             {state?.fieldErrors?.aptNumber && (
@@ -234,7 +235,9 @@ export function AddressForm({ user }: AddressFormProps) {
                 {state.fieldErrors.aptNumber[0]}
               </p>
             )}
-          </div>
+          </div> */}
+
+          <Input type="hidden" name="address" value={selectedAddress} />
 
           <div className="flex gap-2 pt-4">
             <Button
