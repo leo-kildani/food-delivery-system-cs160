@@ -5,6 +5,9 @@ import { CartItem, SerializedProduct } from "./actions";
 import { useDebounce } from "use-debounce";
 import Fuse from "fuse.js";
 import { ProductCard } from "./product-card";
+import FilterDropDown from "./filter-dropdown";
+import FilterButton from "./filter-button";
+import { ProductCategory } from "@prisma/client";
 
 interface ProductSearchProps {
   products: SerializedProduct[];
@@ -15,6 +18,7 @@ interface ProductSearchProps {
 export default function ProductSearchGrid({ products , cart, cartId}: ProductSearchProps) {
   const [userQuery, setUserQuery] = useState("");
   const [debounced] = useDebounce(userQuery, 500);
+  const [activeCategory, setActiveCategory] = useState<ProductCategory | null>(null);
   // check if a certain product is already in cart and keep a list of that
   let cartItemMap: Map<number, number> = new Map();
 
@@ -22,9 +26,15 @@ export default function ProductSearchGrid({ products , cart, cartId}: ProductSea
     cartItemMap.set(cartItem.product.id, cartItem.quantity);
   })
 
+  // Filter by category or none
+  const categoryFilteredProducts = useMemo(() => {
+    if (!activeCategory) return products;
+    return products.filter(p => p.category === activeCategory);
+  }, [products, activeCategory]);
+
   const fuse = useMemo(
     () =>
-      new Fuse(products, {
+      new Fuse(categoryFilteredProducts, {
         keys: ["name", "category"],
         threshold: 0.2,
         includeScore: true,
@@ -32,14 +42,14 @@ export default function ProductSearchGrid({ products , cart, cartId}: ProductSea
         ignoreLocation: true,
         minMatchCharLength: 1,
       }),
-    [products]
+    [categoryFilteredProducts]
   );
   const raw = debounced
     ? fuse
         .search(debounced)
         .slice(0, 10)
         .map((p) => p.item)
-    : products;
+    : categoryFilteredProducts;
 
   return (
     <div>
@@ -55,6 +65,14 @@ export default function ProductSearchGrid({ products , cart, cartId}: ProductSea
           className="mt-1 w-full rounded border px-3 py-2"
           aria-label="Search products"
         />
+      </div>
+      
+      {/* Filter Buttons */}
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <FilterDropDown />
+        <FilterButton 
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}/>
       </div>
 
       {debounced && raw.length === 0 && (

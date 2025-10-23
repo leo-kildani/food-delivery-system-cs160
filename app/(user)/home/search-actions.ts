@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { ProductCategory } from "@prisma/client";
 
 export interface ProductWithNumbers {
   id: number;
@@ -103,3 +104,10 @@ export async function saveSearchHistory(userId: string, query: string): Promise<
   // For now, do nothing. In a real app, you'd save this to database
   // This could be implemented with a SearchHistory table
 }
+
+//FILTER ACTIONS TYPES
+export type Category = ProductCategory; 
+export type FilterButtonProps = {
+  activeCategory: ProductCategory | null;
+  onCategoryChange: (category: ProductCategory | null) => void;
+}; 
