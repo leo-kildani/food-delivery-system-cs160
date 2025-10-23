@@ -15,20 +15,18 @@ interface ProductCardProps {
 export function ProductCard({ product, isInCart, quantity, cartId }: ProductCardProps) {
   const [q, setQuantity] = useState(quantity ? quantity : 1);
   const [quantityChanged, setQuantityChanged] = useState(false);
-  const [state, formAction, isPending] = useActionState(
-    addToCartAction,
-    {} as AddToCartState
-  )
   const handleQuantityChange = (e) => {
     setQuantity(parseInt(e.target.value) || 1)
     setQuantityChanged(true);
   }
-  // Reset quantityChanged when form submission is successful
-  useEffect(() => {
-    if (state.success) {
-      setQuantityChanged(false);
-    }
-  }, [state.success]);
+  const [state, formAction, isPending] = useActionState(async (prevState: AddToCartState, formData: FormData) => {  
+  const newState = await addToCartAction(prevState, formData);  
+    if (newState.success) {  
+    setQuantityChanged(false)  
+    }  
+    return newState  
+  }, {} as AddToCartState);  
+
   return (
     <Card className="border-black/10 hover:shadow-lg transition-shadow h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -97,7 +95,7 @@ export function ProductCard({ product, isInCart, quantity, cartId }: ProductCard
                   className="border border-gray-300 bg-transparent text-gray-700"
                   disabled={isPending}
                 >
-                  {isPending ? "Adding To Cart..." : "Added To Cart"}
+                  {isPending ? "Adding To Cart..." : "Update Cart"}
                 </Button>
                 ) : (
                 <Button type="submit">
