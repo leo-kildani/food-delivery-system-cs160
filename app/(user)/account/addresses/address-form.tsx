@@ -158,7 +158,14 @@ export function AddressForm({ user }: AddressFormProps) {
       }
     };
     initMaps();
-  }, []);
+
+    // Cleanup function to remove autocomplete widget
+    return () => {
+      if (autocompleteContainerRef.current) {
+        autocompleteContainerRef.current.innerHTML = "";
+      }
+    };
+  }, [isOpen]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -242,6 +249,7 @@ export function AddressForm({ user }: AddressFormProps) {
           <div className="flex gap-2 pt-4">
             <Button
               type="submit"
+              // @ts-ignore
               disabled={isPending || !selectedAddress}
               className="flex-1"
             >
