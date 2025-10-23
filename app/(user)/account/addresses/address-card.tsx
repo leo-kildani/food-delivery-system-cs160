@@ -9,7 +9,7 @@ interface AddressCardProps {
 
 export function AddressCard({ address, canDelete }: AddressCardProps) {
   return (
-    <Card className="border-black/10">
+    <Card className="w-full h-fit “border-black/10">
       <CardContent className="pt-6">
         <div className="space-y-3">
           <p className="font-medium text-sm">{address.street}</p>
