@@ -17,15 +17,15 @@ export default function SignUpForm() {
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-stone-50 py-12 font-[Helvetica,Arial,sans-serif]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 py-12 font-[Helvetica,Arial,sans-serif]">
       <div className="w-full max-w-xl">
         {/* Title */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-emerald-800">Sign Up</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">Sign Up</h1>
         </div>
 
         {/* Sign Up Card */}
-        <Card className="border-none shadow-xl bg-white">
+        <Card className="border border-blue-200 shadow-xl bg-white">
           <CardContent className="px-4 py-4">
             {signUpState.formError && (
               <Alert className="mb-3 border-red-200 bg-red-50">
@@ -39,7 +39,7 @@ export default function SignUpForm() {
               {/* Name Fields - Side by Side */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="firstName" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="firstName" className="text-xs font-medium text-blue-700">
                     First Name
                   </Label>
                   <Input
@@ -48,7 +48,7 @@ export default function SignUpForm() {
                     placeholder="First Name"
                     type="text"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.firstName && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -59,7 +59,7 @@ export default function SignUpForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="lastName" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="lastName" className="text-xs font-medium text-blue-700">
                     Last Name
                   </Label>
                   <Input
@@ -68,7 +68,7 @@ export default function SignUpForm() {
                     placeholder="Last Name"
                     type="text"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.lastName && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -81,7 +81,7 @@ export default function SignUpForm() {
 
               {/* Email */}
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-medium text-emerald-800">
+                <Label htmlFor="email" className="text-xs font-medium text-blue-700">
                   Email Address
                 </Label>
                 <Input
@@ -90,7 +90,7 @@ export default function SignUpForm() {
                   placeholder="name@example.com"
                   type="email"
                   required
-                  className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                 />
                 {signUpState.fieldErrors?.email && (
                   <p className="text-red-600 text-xs flex items-center gap-1">
@@ -103,7 +103,7 @@ export default function SignUpForm() {
               {/* Password Fields - Side by Side */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="password" className="text-xs font-medium text-blue-700">
                     Password
                   </Label>
                   <Input
@@ -112,7 +112,7 @@ export default function SignUpForm() {
                     type="password"
                     placeholder="••••••••"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.password && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -123,7 +123,7 @@ export default function SignUpForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-blue-700">
                     Confirm Password
                   </Label>
                   <Input
@@ -132,7 +132,7 @@ export default function SignUpForm() {
                     type="password"
                     placeholder="••••••••"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.confirmPassword && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -145,12 +145,12 @@ export default function SignUpForm() {
 
               {/* Address Section Header */}
               <div className="pt-1.5">
-                <h3 className="text-sm font-semibold text-emerald-800 mb-2">Delivery Address</h3>
+                <h3 className="text-sm font-semibold text-blue-700 mb-2">Delivery Address</h3>
               </div>
 
               {/* Street Address */}
               <div className="space-y-1.5">
-                <Label htmlFor="streetAddress" className="text-xs font-medium text-emerald-800">
+                <Label htmlFor="streetAddress" className="text-xs font-medium text-blue-700">
                   Street Address
                 </Label>
                 <Input
@@ -159,7 +159,7 @@ export default function SignUpForm() {
                   placeholder="123 Main St"
                   type="text"
                   required
-                  className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                 />
                 {signUpState.fieldErrors?.streetAddress && (
                   <p className="text-red-600 text-xs flex items-center gap-1">
@@ -171,7 +171,7 @@ export default function SignUpForm() {
 
               {/* Apartment Number */}
               <div className="space-y-1.5">
-                <Label htmlFor="aptNumber" className="text-xs font-medium text-emerald-800">
+                <Label htmlFor="aptNumber" className="text-xs font-medium text-blue-700">
                   Apartment Number <span className="text-gray-500 text-xs">(Optional)</span>
                 </Label>
                 <Input
@@ -179,7 +179,7 @@ export default function SignUpForm() {
                   name="aptNumber"
                   placeholder=""
                   type="text"
-                  className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                  className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                 />
                 {signUpState.fieldErrors?.aptNumber && (
                   <p className="text-red-600 text-xs flex items-center gap-1">
@@ -192,7 +192,7 @@ export default function SignUpForm() {
               {/* City, State, Postal - Grid Layout */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1.5 md:col-span-1">
-                  <Label htmlFor="city" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="city" className="text-xs font-medium text-blue-700">
                     City
                   </Label>
                   <Input
@@ -201,7 +201,7 @@ export default function SignUpForm() {
                     placeholder="San Jose"
                     type="text"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.city && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -212,7 +212,7 @@ export default function SignUpForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="stateCode" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="stateCode" className="text-xs font-medium text-blue-700">
                     State
                   </Label>
                   <Input
@@ -221,7 +221,7 @@ export default function SignUpForm() {
                     placeholder="CA"
                     type="text"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.stateCode && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -232,7 +232,7 @@ export default function SignUpForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="postalCode" className="text-xs font-medium text-emerald-800">
+                  <Label htmlFor="postalCode" className="text-xs font-medium text-blue-700">
                     Zip Code
                   </Label>
                   <Input
@@ -241,7 +241,7 @@ export default function SignUpForm() {
                     placeholder="94102"
                     type="text"
                     required
-                    className="h-9 border-emerald-200 focus:border-emerald-600 focus:ring-emerald-500 bg-white text-sm"
+                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.postalCode && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
@@ -255,7 +255,7 @@ export default function SignUpForm() {
               <Button 
                 type="submit" 
                 disabled={signUpIsPending}
-                className="w-full h-9 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 mt-4 text-sm"
+                className="w-full h-9 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 mt-4 text-sm"
               >
                 {signUpIsPending ? (
                   <span className="flex items-center gap-2">
@@ -272,15 +272,15 @@ export default function SignUpForm() {
             </form>
           </CardContent>
 
-          <CardFooter className="flex flex-col space-y-4 border-t border-emerald-100 pt-6 pb-6">
-            <div className="text-center text-base text-emerald-700">
+          <CardFooter className="flex flex-col space-y-4 border-t border-blue-200 pt-6 pb-6">
+            <div className="text-center text-base text-blue-600">
               Already have an account?{" "}
               <Link 
                 href="/login" 
-                className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors inline-flex items-center gap-1"
+                className="font-semibold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent hover:from-blue-700 hover:to-blue-800 transition-all inline-flex items-center gap-1"
               >
                 Log In
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 text-blue-600" />
               </Link>
             </div>
           </CardFooter>
