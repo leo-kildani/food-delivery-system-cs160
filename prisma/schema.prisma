@@ -44,11 +44,7 @@ model DeliveryAddress {
   id           Int      @id @default(autoincrement())
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String
-  street       String
-  aptNumber    String?
-  city         String
-  stateCode    String   @db.VarChar(2)
-  postalCode   String
+  address      String
 
   @@index([userId])
 }
