@@ -1,0 +1,6 @@
+export const STORE_LOCATION = {
+  lat: 37.33685544630701,
+  lng: -121.88428406138526,
+};
+export const RADIUS_MILES = 10;
+export const RADIUS_METERS = RADIUS_MILES * 1609.34;

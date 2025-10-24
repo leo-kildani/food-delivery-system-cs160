@@ -1,11 +1,32 @@
-import { SerializedProduct } from "./actions";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+'use client'
 
+import { Button } from "@/components/ui/button";
+import {addToCartAction, CartItem, SerializedProduct, AddToCartState } from "./actions";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useActionState, useEffect, useState } from "react";
 interface ProductCardProps {
   product: SerializedProduct;
+  isInCart: boolean;
+  quantity: number | undefined; // if product is not already in cart that number will not be displayed
+  cartId: number;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, isInCart, quantity, cartId }: ProductCardProps) {
+  const [q, setQuantity] = useState(quantity ? quantity : 1);
+  const [quantityChanged, setQuantityChanged] = useState(false);
+  const handleQuantityChange = (e) => {
+    setQuantity(parseInt(e.target.value) || 1)
+    setQuantityChanged(true);
+  }
+  const [state, formAction, isPending] = useActionState(async (prevState: AddToCartState, formData: FormData) => {  
+  const newState = await addToCartAction(prevState, formData);  
+    if (newState.success) {  
+    setQuantityChanged(false)  
+    }  
+    return newState  
+  }, {} as AddToCartState);  
+
   return (
     <Card className="border-black/10 hover:shadow-lg transition-shadow h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -47,6 +68,44 @@ export function ProductCard({ product }: ProductCardProps) {
               {product.quantityOnHand} in stock
             </p>
           </div>
+            <form action={formAction}>
+              {/* Hidden input */}
+              <input type="hidden" name="cartId" value={cartId} />
+              <input type="hidden" name="productId" value={product.id} />
+              <input type="hidden" name="quantity" value={q} />
+              <div className="flex items-end justify-center gap-8">
+              <div>
+                <label htmlFor="quantity" className="block text-xs font-medium text-gray-700 mb-1">
+                Quantity
+                </label>
+                <Input
+                type="number"
+                id="quantity"
+                min={1}
+                max={product.quantityOnHand}
+                value={q}
+                onChange={handleQuantityChange}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="pt-5">
+                {isInCart && !quantityChanged? (
+                <Button
+                  type="button"
+                  className="border border-gray-300 bg-transparent text-gray-700"
+                  disabled={isPending}
+                >
+                  {isPending ? "Adding To Cart..." : "Update Cart"}
+                </Button>
+                ) : (
+                <Button type="submit">
+                  {isPending ? "Adding To Cart..." : "Add To Cart"}
+                </Button>
+                )}
+              </div>
+              </div>
+            </form>
+            
         </div>
       </CardContent>
     </Card>
