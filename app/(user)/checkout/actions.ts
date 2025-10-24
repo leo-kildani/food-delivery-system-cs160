@@ -71,7 +71,7 @@ export type CheckoutState = {
   fieldErrors?: Record<string, string[]>;
 };
 
-async function getAddresses(): Promise<DeliveryAddress[]> {
+export async function getAddresses(): Promise<DeliveryAddress[]> {
   let userId = await getUserId();
   let addresses = await prisma.deliveryAddress.findMany({
     where: {
