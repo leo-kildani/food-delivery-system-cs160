@@ -61,9 +61,54 @@ export async function deployVehicleAction(
   }
 }
 
-export async function getVehicles() : Promise<Vehicle[]> {
-  const vehicles = await prisma.vehicle.findMany({});
-  return vehicles;
+export interface VehicleWithOrders extends Vehicle {
+  assignedOrdersCount: number;
+  totalAssignedWeight: number;
+}
+
+export async function getVehicles(): Promise<VehicleWithOrders[]> {
+  const vehicles = await prisma.vehicle.findMany({
+    include: {
+      orders: {
+        include: {
+          orderItems: true
+        }
+      }
+    }
+  });
+
+  // Calculate order count and total weight for each vehicle
+  const vehiclesWithOrders = vehicles.map(vehicle => {
+    const assignedOrdersCount = vehicle.orders.length;
+    
+    // Calculate total weight from all assigned orders
+    const totalAssignedWeight = vehicle.orders.reduce((totalWeight, order) => {
+      const orderWeight = order.orderItems.reduce((orderTotal, item) => {
+        return orderTotal + (item.weightPerUnit.toNumber() * item.quantity);
+      }, 0);
+      return totalWeight + orderWeight;
+    }, 0);
+
+    // Convert vehicle object to ensure all Decimals are converted to numbers
+    const vehicleData = {
+      ...vehicle,
+      // Convert any Decimal fields if they exist
+      orders: vehicle.orders.map(order => ({
+        ...order,
+        orderItems: order.orderItems.map(item => ({
+          ...item,
+          pricePerUnit: item.pricePerUnit.toNumber(),
+          weightPerUnit: item.weightPerUnit.toNumber()
+        }))
+      })),
+      assignedOrdersCount,
+      totalAssignedWeight
+    };
+
+    return vehicleData;
+  });
+
+  return vehiclesWithOrders;
 }
 interface PendingOrder {
   order: Order,

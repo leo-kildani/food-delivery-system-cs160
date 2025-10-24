@@ -1,9 +1,9 @@
 "use client"
 import { Separator } from "@/components/ui/separator";
-import { Order, Vehicle } from "@prisma/client";
+import { Order } from "@prisma/client";
 import { useState, useActionState } from "react";
 import { Truck, Package } from "lucide-react";
-import { deployVehicleAction, DeployState } from "./actions";
+import { deployVehicleAction, DeployState, VehicleWithOrders } from "./actions";
 import { VehicleCard, OrderCard, DeployFeedback } from "./components";
 
 type PendingOrder = {
@@ -12,7 +12,7 @@ type PendingOrder = {
   totalWeight: number,
 }
 
-export default function VehicleOrderList({ vehicles , pendingOrders }: { vehicles: Vehicle[] , pendingOrders: PendingOrder[] }) {
+export default function VehicleOrderList({ vehicles , pendingOrders }: { vehicles: VehicleWithOrders[] , pendingOrders: PendingOrder[] }) {
   const [selectedVehicle, setSelectedVehicle] = useState(0);
   const [assignedOrders, setAssignedOrders] = useState<{ [key: number]: number[] }>({}); // vehicleId -> orderIds[]
   
@@ -35,8 +35,12 @@ export default function VehicleOrderList({ vehicles , pendingOrders }: { vehicle
 
   // Check if adding an order would exceed weight limit
   const wouldExceedWeightLimit = (vehicleId: number, orderWeight: number): boolean => {
-    const currentWeight = getVehicleTotalWeight(vehicleId);
-    return (currentWeight + orderWeight) > 200;
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (!vehicle) return true;
+    
+    const tempWeight = getVehicleTotalWeight(vehicleId);
+    const totalCurrentWeight = vehicle.totalAssignedWeight + tempWeight;
+    return (totalCurrentWeight + orderWeight) > 200;
   };
 
   return (
@@ -55,16 +59,16 @@ export default function VehicleOrderList({ vehicles , pendingOrders }: { vehicle
           </h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {vehicles.map((vehicle) => {
-              const vehicleWeight = getVehicleTotalWeight(vehicle.id);
-              const assignedOrderCount = assignedOrders[vehicle.id]?.length || 0;
+              const tempVehicleWeight = getVehicleTotalWeight(vehicle.id);
+              const tempAssignedOrderCount = assignedOrders[vehicle.id]?.length || 0;
               
               return (
                 <VehicleCard
                   key={vehicle.id}
                   vehicle={vehicle}
                   isSelected={selectedVehicle === vehicle.id}
-                  vehicleWeight={vehicleWeight}
-                  assignedOrderCount={assignedOrderCount}
+                  tempVehicleWeight={tempVehicleWeight}
+                  tempAssignedOrderCount={tempAssignedOrderCount}
                   assignedOrders={assignedOrders[vehicle.id] || []}
                   isDeploying={isDeploying}
                   onSelect={() => setSelectedVehicle(vehicle.id)}

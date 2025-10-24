@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Vehicle } from "@prisma/client";
 import { Truck, Weight } from "lucide-react";
-import { deployVehicleAction, DeployState } from "../actions";
+import { DeployState, VehicleWithOrders } from "../actions";
 
 interface VehicleCardProps {
-  vehicle: Vehicle;
+  vehicle: VehicleWithOrders;
   isSelected: boolean;
-  vehicleWeight: number;
-  assignedOrderCount: number;
+  tempVehicleWeight: number; // Weight from temporarily assigned orders
+  tempAssignedOrderCount: number; // Count from temporarily assigned orders
   assignedOrders: number[];
   isDeploying: boolean;
   onSelect: () => void;
@@ -20,14 +20,19 @@ interface VehicleCardProps {
 export function VehicleCard({
   vehicle,
   isSelected,
-  vehicleWeight,
-  assignedOrderCount,
+  tempVehicleWeight,
+  tempAssignedOrderCount,
   assignedOrders,
   isDeploying,
   onSelect,
   deployAction
 }: VehicleCardProps) {
-  const isOverloaded = vehicleWeight > 200;
+  // Total weight = persistent weight + temporary weight
+  const totalWeight = vehicle.totalAssignedWeight + tempVehicleWeight;
+  const isOverloaded = totalWeight > 200;
+  
+  // Total orders = persistent orders + temporary orders
+  const totalOrderCount = vehicle.assignedOrdersCount + tempAssignedOrderCount;
   
   return (
     <Card 
@@ -64,21 +69,37 @@ export function VehicleCard({
           <div className="text-sm text-gray-600">
             <div className="flex items-center gap-2 mb-2">
               <Weight className="h-4 w-4" />
-              <span className={`font-medium ${isOverloaded ? 'text-red-600' : vehicleWeight > 150 ? 'text-orange-600' : 'text-green-600'}`}>
-                {vehicleWeight.toFixed(1)} / 200 lbs
+              <span className={`font-medium ${isOverloaded ? 'text-red-600' : totalWeight > 150 ? 'text-orange-600' : 'text-green-600'}`}>
+                {totalWeight.toFixed(1)} / 200 lbs
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
               <div 
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  isOverloaded ? 'bg-red-500' : vehicleWeight > 150 ? 'bg-orange-500' : 'bg-green-500'
+                  isOverloaded ? 'bg-red-500' : totalWeight > 150 ? 'bg-orange-500' : 'bg-green-500'
                 }`}
-                style={{ width: `${Math.min((vehicleWeight / 200) * 100, 100)}%` }}
+                style={{ width: `${Math.min((totalWeight / 200) * 100, 100)}%` }}
               ></div>
             </div>
-            {assignedOrderCount > 0 && (
-              <p className="text-blue-600 font-medium">
-                {assignedOrderCount} orders assigned
+            
+            {/* Show persistent orders info */}
+            {vehicle.assignedOrdersCount > 0 && (
+              <p className="text-green-600 font-medium text-xs mb-1">
+                ✓ {vehicle.assignedOrdersCount} deployed orders ({vehicle.totalAssignedWeight.toFixed(1)} lbs)
+              </p>
+            )}
+            
+            {/* Show temporary orders info */}
+            {tempAssignedOrderCount > 0 && (
+              <p className="text-blue-600 font-medium text-xs">
+                📋 {tempAssignedOrderCount} pending assignment ({tempVehicleWeight.toFixed(1)} lbs)
+              </p>
+            )}
+            
+            {/* Show total if both exist */}
+            {vehicle.assignedOrdersCount > 0 && tempAssignedOrderCount > 0 && (
+              <p className="text-gray-700 font-medium text-xs border-t pt-1 mt-1">
+                Total: {totalOrderCount} orders ({totalWeight.toFixed(1)} lbs)
               </p>
             )}
           </div>
@@ -93,11 +114,11 @@ export function VehicleCard({
               type="submit"
               size="sm" 
               className="w-full bg-blue-600 hover:bg-blue-700"
-              disabled={isDeploying || assignedOrderCount === 0 || vehicle.status === 'IN_TRANSIT'}
+              disabled={isDeploying || tempAssignedOrderCount === 0 || vehicle.status === 'IN_TRANSIT'}
             >
               {isDeploying ? 'Deploying...' : 
                vehicle.status === 'IN_TRANSIT' ? 'Already Deployed' :
-               assignedOrderCount === 0 ? 'No Orders' : 'Deploy'}
+               tempAssignedOrderCount === 0 ? 'No New Orders' : 'Deploy'}
             </Button>
           </form>
         </div>
