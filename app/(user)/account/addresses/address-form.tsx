@@ -104,6 +104,8 @@ export function AddressForm({ user }: AddressFormProps) {
             new google.maps.places.PlaceAutocompleteElement({
               componentRestrictions: { country: "us" },
               locationRestriction: circle.getBounds(),
+              // @ts-ignore
+              includedPrimaryTypes: ["street_address"],
             });
 
           placeAutocomplete.style.width = "100%";
