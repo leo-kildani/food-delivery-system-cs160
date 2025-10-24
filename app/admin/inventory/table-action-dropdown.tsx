@@ -21,34 +21,26 @@ import { Button } from "@/components/ui/button";
 import { useActionState, useEffect, useState } from "react";
 import { deleteProduct, editProductAction, EditProductState } from "./actions";
 import { Label } from "@/components/ui/label";
-import { ProductCategory } from "@prisma/client";
+import { ProductCategory, ProductStatus } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { TableProduct } from "./columns";
+import { DeleteDialog, RestoreDialog } from "./action-dialogs";
 
 type TableActionProp = {
   productRow: TableProduct;
 };
 
 export default function TableActionDropdown(prop: TableActionProp) {
-  const rowProduct = prop.productRow;
+  const productRow = prop.productRow;
+  const itemActive = productRow.status === ProductStatus.ACTIVE;
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deleteProductPending, setDeleteProductPending] = useState(false);
-  const [deleteFail, setDeleteFail] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
 
-  const boundEditProductAction = editProductAction.bind(null, rowProduct.id);
+  const boundEditProductAction = editProductAction.bind(null, productRow.id);
   const [editProductState, editProductFormAction, editProductIsPending] =
     useActionState(boundEditProductAction, {} as EditProductState);
   const [showEditDialog, setShowEditDialog] = useState(false);
-
-  const deleteProductHandler = async (productId: number) => {
-    setDeleteProductPending(true);
-    const result = await deleteProduct(productId);
-    if (!result.success) {
-      setDeleteFail(true);
-    }
-    setDeleteProductPending(false);
-  };
 
   useEffect(() => {
     if (editProductState?.ok) {
@@ -75,12 +67,21 @@ export default function TableActionDropdown(prop: TableActionProp) {
           <DropdownMenuItem onSelect={() => setShowEditDialog(true)}>
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-red-600"
-            onSelect={() => setShowDeleteDialog(true)}
-          >
-            Delete
-          </DropdownMenuItem>
+          {itemActive ? (
+            <DropdownMenuItem
+              className="text-red-600"
+              onSelect={() => setShowDeleteDialog(true)}
+            >
+              Delete
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              className="text-green-600"
+              onSelect={() => setShowRestoreDialog(true)}
+            >
+              Restore
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -99,7 +100,7 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="name"
                   name="name"
-                  defaultValue={rowProduct.name}
+                  defaultValue={productRow.name}
                   type="text"
                 />
                 {editProductState.fieldErrors?.name && (
@@ -115,7 +116,7 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="description"
                   name="description"
-                  defaultValue={rowProduct.description}
+                  defaultValue={productRow.description}
                   type="text"
                 />
                 {editProductState.fieldErrors?.description && (
@@ -131,21 +132,21 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <select
                   id="category"
                   name="category"
-                  defaultValue={rowProduct.category}
+                  defaultValue={productRow.category}
                 >
                   {/* Default value (existing category)*/}
                   <option
-                    key={rowProduct.category.codePointAt(0)}
-                    value={rowProduct.category}
+                    key={productRow.category.codePointAt(0)}
+                    value={productRow.category}
                   >
-                    {rowProduct.category
+                    {productRow.category
                       .toLowerCase()
                       .replace(/\b\w/g, (s) => s.toUpperCase())}
                   </option>
                   {/* create options in the form based on the categories in the product enum EXCEPT the category the item already is */}
                   {Object.values(ProductCategory)
                     .filter((cat) => {
-                      return cat !== rowProduct.category;
+                      return cat !== productRow.category;
                     })
                     .map((productCat) => (
                       // random key based on unicode value of string because next.js/react wants one
@@ -172,7 +173,7 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="pricePerUnit"
                   name="pricePerUnit"
-                  defaultValue={rowProduct.pricePerUnit.toFixed(2)}
+                  defaultValue={productRow.pricePerUnit.toFixed(2)}
                   type="number"
                   min="0"
                   step="0.01"
@@ -190,7 +191,7 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="weightPerUnit"
                   name="weightPerUnit"
-                  defaultValue={rowProduct.weightPerUnit.toFixed(3)}
+                  defaultValue={productRow.weightPerUnit.toFixed(3)}
                   type="number"
                   min="0"
                   step="0.001"
@@ -208,7 +209,7 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="quantityOnHand"
                   name="quantityOnHand"
-                  defaultValue={rowProduct.quantityOnHand}
+                  defaultValue={productRow.quantityOnHand}
                   type="number"
                   min="0"
                 />
@@ -232,36 +233,19 @@ export default function TableActionDropdown(prop: TableActionProp) {
       </Dialog>
 
       {/* Delete Dialog Box */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
-            <DialogDescription>
-              Deleting this item will <b>permanently remove</b> it from the
-              database! <b>Are you sure</b> you want to do this?
-            </DialogDescription>
-
-            {/* Delete failure text */}
-            <DialogDescription className="text-red-600 text-sm mt-1 text-right">
-              {deleteFail ? "Delete failed. Likely foreign key issues." : ""}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={() => deleteProductHandler(rowProduct.id)}
-              className="bg-red-600"
-              disabled={deleteProductPending || deleteFail}
-            >
-              {deleteProductPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {itemActive ? (
+        <DeleteDialog
+          productId={productRow.id}
+          showDeleteDialog={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+        />
+      ) : (
+        <RestoreDialog
+          productId={productRow.id}
+          showRestoreDialog={showRestoreDialog}
+          setShowRestoreDialog={setShowRestoreDialog}
+        />
+      )}
     </>
   );
 }
