@@ -24,7 +24,7 @@ export async function parseAddress(
   const regex = /^(.*), ([^,]+), CA (\d{5}), USA$/;
 
   const match = address.match(regex);
-
+  
   if (match) {
     // match[0] is the full matched string
     // match[1] is the Address
