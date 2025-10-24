@@ -88,21 +88,25 @@ export function ProductCard({ product, isInCart, quantity, cartId }: ProductCard
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="pt-5">
-                {isInCart && !quantityChanged? (
-                <Button
+                <div className="pt-5">
+                {isInCart && !quantityChanged ? (
+                  <Button
                   type="button"
                   className="border border-gray-300 bg-transparent text-gray-700"
                   disabled={isPending}
-                >
-                  {isPending ? "Adding To Cart..." : "Update Cart"}
-                </Button>
+                  >
+                  {isPending ? "Updating Cart..." : "Update Cart"}
+                  </Button>
+                ) : isInCart ? (
+                  <Button type="submit">
+                  {isPending ? "Updating Cart..." : "Update Cart"}
+                  </Button>
                 ) : (
-                <Button type="submit">
+                  <Button type="submit">
                   {isPending ? "Adding To Cart..." : "Add To Cart"}
-                </Button>
+                  </Button>
                 )}
-              </div>
+                </div>
               </div>
             </form>
             
