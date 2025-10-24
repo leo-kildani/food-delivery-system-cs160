@@ -56,10 +56,13 @@ export default function SignUpForm() {
           });
 
           // @ts-ignore
-          const placeAutocomplete = new PlaceAutocompleteElement({
-            componentRestrictions: { country: "us" },
-            locationRestriction: circle.getBounds(),
-          });
+          const placeAutocomplete =
+            new google.maps.places.PlaceAutocompleteElement({
+              componentRestrictions: { country: "us" },
+              locationRestriction: circle.getBounds(),
+              // @ts-ignore
+              includedPrimaryTypes: ["street_address"],
+            });
 
           placeAutocomplete.style.width = "100%";
           autocompleteContainerRef.current.appendChild(placeAutocomplete);
