@@ -19,12 +19,16 @@ import {
 import { MoreHorizontalIcon, MoreVerticalIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActionState, useEffect, useState } from "react";
-import { deleteProduct, editProductAction, EditProductState } from "../actions";
+import {
+  archiveProduct,
+  editProductAction,
+  EditProductState,
+} from "../actions";
 import { Label } from "@/components/ui/label";
 import { ProductCategory, ProductStatus } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { TableProduct } from "./columns";
-import { DeleteDialog, RestoreDialog } from "./action-dialogs";
+import { ArchiveDialog, RestoreDialog } from "./action-dialogs";
 
 type TableActionProp = {
   productRow: TableProduct;
@@ -34,7 +38,7 @@ export default function TableActionDropdown(prop: TableActionProp) {
   const productRow = prop.productRow;
   const itemActive = productRow.status === ProductStatus.ACTIVE;
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
 
   const boundEditProductAction = editProductAction.bind(null, productRow.id);
@@ -70,9 +74,9 @@ export default function TableActionDropdown(prop: TableActionProp) {
           {itemActive ? (
             <DropdownMenuItem
               className="text-red-600"
-              onSelect={() => setShowDeleteDialog(true)}
+              onSelect={() => setShowArchiveDialog(true)}
             >
-              Delete
+              Archive
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
@@ -232,12 +236,12 @@ export default function TableActionDropdown(prop: TableActionProp) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog Box */}
+      {/* Archive Dialog Box */}
       {itemActive ? (
-        <DeleteDialog
+        <ArchiveDialog
           productId={productRow.id}
-          showDeleteDialog={showDeleteDialog}
-          setShowDeleteDialog={setShowDeleteDialog}
+          showArchiveDialog={showArchiveDialog}
+          setShowArchiveDialog={setShowArchiveDialog}
         />
       ) : (
         <RestoreDialog

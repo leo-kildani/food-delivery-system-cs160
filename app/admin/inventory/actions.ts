@@ -17,11 +17,11 @@ export async function getInactiveProducts(): Promise<Product[]> {
   });
 }
 
-export async function deleteProduct(
+export async function archiveProduct(
   productId: number
 ): Promise<{ success: boolean }> {
-  // Delete throws an exception on failure (if record doesn't exist)
-  // We expect to only be deleting objects that exist, but still important to catch
+  // Archive throws an exception on failure (if record doesn't exist)
+  // We expect to only be archiving objects that exist, but still important to catch
   try {
     await prisma.product.update({
       where: {
@@ -37,7 +37,7 @@ export async function deleteProduct(
     }
     throw e; // If not the expected error something may be wrong, throw
   }
-  // Updates the table after deleting item
+  // Updates the table after archiving item
   revalidatePath("/admin/inventory");
   return { success: true };
 }
@@ -45,8 +45,8 @@ export async function deleteProduct(
 export async function restoreProduct(
   productId: number
 ): Promise<{ success: boolean }> {
-  // Delete throws an exception on failure (if record doesn't exist)
-  // We expect to only be deleting objects that exist, but still important to catch
+  // Archive throws an exception on failure (if record doesn't exist)
+  // We expect to only be restoring objects that exist, but still important to catch
   try {
     await prisma.product.update({
       where: {
@@ -62,7 +62,7 @@ export async function restoreProduct(
     }
     throw e; // If not the expected error something may be wrong, throw
   }
-  // Updates the table after deleting item
+  // Updates the table after restoring item
   revalidatePath("/admin/inventory");
   return { success: true };
 }

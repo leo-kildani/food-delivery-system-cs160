@@ -10,49 +10,49 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useState } from "react";
-import { deleteProduct, restoreProduct } from "../actions";
+import { archiveProduct, restoreProduct } from "../actions";
 import { Button } from "@/components/ui/button";
 
-type DeleteDialogProps = {
+type ArchiveDialogProps = {
   productId: number;
-  showDeleteDialog: boolean;
-  setShowDeleteDialog: (open: boolean) => void;
+  showArchiveDialog: boolean;
+  setShowArchiveDialog: (open: boolean) => void;
 };
 
-export function DeleteDialog({
+export function ArchiveDialog({
   productId,
-  showDeleteDialog,
-  setShowDeleteDialog,
-}: DeleteDialogProps) {
-  const [deleteProductPending, setDeleteProductPending] = useState(false);
-  const [deleteFail, setDeleteFail] = useState(false);
+  showArchiveDialog,
+  setShowArchiveDialog,
+}: ArchiveDialogProps) {
+  const [archiveProductPending, setArchiveProductPending] = useState(false);
+  const [archiveFail, setArchiveFail] = useState(false);
 
-  const deleteProductHandler = async (productId: number) => {
-    setDeleteProductPending(true);
-    const result = await deleteProduct(productId);
+  const archiveProductHandler = async (productId: number) => {
+    setArchiveProductPending(true);
+    const result = await archiveProduct(productId);
     if (result.success) {
       // close the dialog if successful
-      setShowDeleteDialog(false);
+      setShowArchiveDialog(false);
     } else {
-      setDeleteFail(true);
+      setArchiveFail(true);
     }
-    setDeleteProductPending(false);
+    setArchiveProductPending(false);
   };
   return (
     <>
-      {/* Delete Dialog Box */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Archive Dialog Box */}
+      <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogTitle>Confirm Archive</DialogTitle>
             <DialogDescription>
               Restoring this item will <b>remove</b> it from the list of active
               items! <b>Are you sure</b> you want to do this?
             </DialogDescription>
 
-            {/* Delete failure text */}
+            {/* Archive failure text */}
             <DialogDescription className="text-red-600 text-sm mt-1 text-right">
-              {deleteFail ? "Delete failed. Likely foreign key issues." : ""}
+              {archiveFail ? "Archive failed. Likely foreign key issues." : ""}
             </DialogDescription>
           </DialogHeader>
 
@@ -62,11 +62,11 @@ export function DeleteDialog({
             </DialogClose>
             <Button
               type="button"
-              onClick={() => deleteProductHandler(productId)}
+              onClick={() => archiveProductHandler(productId)}
               className="bg-red-600"
-              disabled={deleteProductPending || deleteFail}
+              disabled={archiveProductPending || archiveFail}
             >
-              {deleteProductPending ? "Deleting..." : "Delete"}
+              {archiveProductPending ? "Archiving..." : "Archive"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -128,7 +128,7 @@ export function RestoreDialog({
               className="bg-green-600"
               disabled={restoreProductPending || restoreFail}
             >
-              {restoreProductPending ? "Deleting..." : "Restore"}
+              {restoreProductPending ? "Restoring..." : "Restore"}
             </Button>
           </DialogFooter>
         </DialogContent>

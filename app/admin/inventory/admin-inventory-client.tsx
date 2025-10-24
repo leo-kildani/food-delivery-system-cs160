@@ -39,7 +39,7 @@ export default function AdminInventoryClient({
             onCheckedChange={setShowInactive}
             id="show-inactive"
           />
-          <label htmlFor="show-inactive">Show Inactive</label>
+          <label htmlFor="show-inactive">Show Archived</label>
           <AddProductButton />
         </div>
       </div>
