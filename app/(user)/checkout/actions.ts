@@ -2,7 +2,9 @@
 
 import prisma from '@/lib/prisma';
 import {createClient} from '@/lib/supabase/server';
-import {Prisma, Product} from '@prisma/client';
+import {DeliveryAddress, Prisma, Product, Order} from '@prisma/client';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 // Define query type for Cart with Cartitem and products
 const cartWithItemsAndProduct = Prisma.validator<Prisma.CartDefaultArgs>()({
@@ -69,26 +71,35 @@ export type CheckoutState = {
   fieldErrors?: Record<string, string[]>;
 };
 
+async function getAddresses(): Promise<DeliveryAddress[]> {
+  let userId = await getUserId();
+  let addresses = await prisma.deliveryAddress.findMany({
+    where: {
+      userId: userId,
+    }
+  }
+  )
+  return addresses;
+}
 
 export async function checkoutAction(
     prevState: CheckoutState, formData: FormData): Promise<CheckoutState> {
   try {
     const selectedItemsJson = formData.get('selectedItems') as string;
     const selectedItems = JSON.parse(selectedItemsJson);
-    // console.log(selectedItems);
-    // create new order with it being pending
-    const delivery = await prisma.delivery.create({
-      data: {
-          // this is autoincrement id
-      },  // empty
-    });
+
     let userId = await getUserId();
-    let cart = await prisma.cart.findUnique({where: {userId: userId}});
+    let cart = await prisma.cart.findUnique({ where: { userId: userId } });
+    let addresses = await getAddresses();
+    if (addresses.length <= 0) {
+      return { formError: "You do not have an address set" };
+    }
     const order = await prisma.order.create({
       data: {
-        deliveryId: delivery.id,
         userId: userId,
         status: 'PENDING',
+        toAddress: addresses[0]?.address, 
+        createdAt: new Date()
       },
     });
     const productIds = selectedItems.map((item: any) => item.productId);
@@ -98,6 +109,8 @@ export async function checkoutAction(
                                 orderId: order.id,
                                 productId: item.productId,
                                 quantity: item.quantity,
+                                pricePerUnit: item.pricePerUnit, 
+                                weightPerUnit: item.weightPerUnit
                               })),
     });
     // create order items with the correct order ID
@@ -105,10 +118,11 @@ export async function checkoutAction(
     const remove_items = await prisma.cartItem.deleteMany({
       where: {cartId: cart?.id, productId: {in : productIds}},
     });
-    console.log('processing checkout');
-    return {ok: true};
+
   } catch (error) {
     console.log('some error:', error);
     return {formError: 'Checkout failed, some problem occured'};
   }
+  revalidatePath('/home');
+  redirect('/home')
 }
