@@ -26,6 +26,12 @@ enum OrderStatus {
   CANCELLED
   REFUNDED
   COMPLETE
+  IN_TRANSIT
+}
+
+enum VehicleStatus {
+  IN_TRANSIT
+  STANDBY
 }
 
 model User {
@@ -86,15 +92,17 @@ model CartItem {
 
 model Order {
   id           Int         @id @default(autoincrement())
-  delivery     Delivery?   @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
-  deliveryId   Int?
+  delivery     Vehicle?    @relation(fields: [VehicleId], references: [id], onDelete: SetNull)
+  VehicleId    Int?
   user         User        @relation(fields: [userId], references: [id], onDelete: Restrict) // preserve history
   userId       String
   status       OrderStatus @default(PENDING)
   orderItems   OrderItem[]
+  createdAt    DateTime
+  toAddress    String
 
   @@index([userId])
-  @@index([deliveryId])
+  @@index([VehicleId])
 }
 
 model OrderItem {
@@ -104,12 +112,16 @@ model OrderItem {
   product      Product  @relation(fields: [productId], references: [id], onDelete: NoAction) // keep product deletion blocked if referenced
   productId    Int
   quantity     Int
-
+  pricePerUnit    Decimal          @db.Decimal(10,2)
+  weightPerUnit   Decimal          @db.Decimal(10,3)
+  
   @@index([orderId])
   @@index([productId])
 }
 
-model Delivery {
+model Vehicle {
   id           Int      @id @default(autoincrement())
   orders       Order[]
+  status      VehicleStatus @default(STANDBY)
+
 }
