@@ -7,7 +7,6 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-        
 
 enum UserRole {
   USER
@@ -19,6 +18,11 @@ enum ProductCategory {
   VEGETABLE
   DAIRY
   MEAT
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum OrderStatus {
@@ -35,55 +39,56 @@ enum VehicleStatus {
 }
 
 model User {
-  id            String            @id @default(cuid())
-  authId        String            @unique
-  firstName     String?
-  lastName      String?
-  email         String            @unique
-  role          UserRole          @default(USER)
-  addresses     DeliveryAddress[]
-  orders        Order[]
-  cart          Cart?
+  id        String            @id @default(cuid())
+  authId    String            @unique
+  firstName String?
+  lastName  String?
+  email     String            @unique
+  role      UserRole          @default(USER)
+  addresses DeliveryAddress[]
+  orders    Order[]
+  cart      Cart?
 }
 
 model DeliveryAddress {
-  id           Int      @id @default(autoincrement())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String
-  address      String
+  id      Int    @id @default(autoincrement())
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  address String
 
   @@index([userId])
 }
 
 model Product {
-  id              Int              @id @default(autoincrement())
-  name            String
-  description     String
-  category        ProductCategory
-  pricePerUnit    Decimal          @db.Decimal(10,2)
-  weightPerUnit   Decimal          @db.Decimal(10,3)
-  quantityOnHand  Int
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
-  imageUrl        String?
+  id             Int             @id @default(autoincrement())
+  name           String
+  description    String
+  category       ProductCategory
+  pricePerUnit   Decimal         @db.Decimal(10, 2)
+  weightPerUnit  Decimal         @db.Decimal(10, 3)
+  quantityOnHand Int
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  imageUrl       String?
+  status         ProductStatus   @default(ACTIVE)
 }
 
 model Cart {
-  id           Int        @id @default(autoincrement())
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String     @unique
-  cartItems    CartItem[]
+  id        Int        @id @default(autoincrement())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String     @unique
+  cartItems CartItem[]
 
   @@index([userId])
 }
 
 model CartItem {
-  id         Int      @id @default(autoincrement())
-  cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  cartId     Int
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade) // carts can safely clear
-  productId  Int
-  quantity   Int
+  id        Int     @id @default(autoincrement())
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId    Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade) // carts can safely clear
+  productId Int
+  quantity  Int
 
   @@unique([cartId, productId])
   @@index([cartId])
@@ -91,37 +96,36 @@ model CartItem {
 }
 
 model Order {
-  id           Int         @id @default(autoincrement())
-  delivery     Vehicle?    @relation(fields: [VehicleId], references: [id], onDelete: SetNull)
-  VehicleId    Int?
-  user         User        @relation(fields: [userId], references: [id], onDelete: Restrict) // preserve history
-  userId       String
-  status       OrderStatus @default(PENDING)
-  orderItems   OrderItem[]
-  createdAt    DateTime
-  toAddress    String
+  id         Int         @id @default(autoincrement())
+  delivery   Vehicle?    @relation(fields: [VehicleId], references: [id], onDelete: SetNull)
+  VehicleId  Int?
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict) // preserve history
+  userId     String
+  status     OrderStatus @default(PENDING)
+  orderItems OrderItem[]
+  createdAt  DateTime
+  toAddress  String
 
   @@index([userId])
   @@index([VehicleId])
 }
 
 model OrderItem {
-  id           Int      @id @default(autoincrement())
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId      Int
-  product      Product  @relation(fields: [productId], references: [id], onDelete: NoAction) // keep product deletion blocked if referenced
-  productId    Int
-  quantity     Int
-  pricePerUnit    Decimal          @db.Decimal(10,2)
-  weightPerUnit   Decimal          @db.Decimal(10,3)
-  
+  id            Int     @id @default(autoincrement())
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId       Int
+  product       Product @relation(fields: [productId], references: [id], onDelete: NoAction) // keep product deletion blocked if referenced
+  productId     Int
+  quantity      Int
+  pricePerUnit  Decimal @db.Decimal(10, 2)
+  weightPerUnit Decimal @db.Decimal(10, 3)
+
   @@index([orderId])
   @@index([productId])
 }
 
 model Vehicle {
-  id           Int      @id @default(autoincrement())
-  orders       Order[]
-  status      VehicleStatus @default(STANDBY)
-
+  id     Int           @id @default(autoincrement())
+  orders Order[]
+  status VehicleStatus @default(STANDBY)
 }
