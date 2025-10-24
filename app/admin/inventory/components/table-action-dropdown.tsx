@@ -19,7 +19,7 @@ import {
 import { MoreHorizontalIcon, MoreVerticalIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActionState, useEffect, useState } from "react";
-import { deleteProduct, editProductAction, EditProductState } from "./actions";
+import { deleteProduct, editProductAction, EditProductState } from "../actions";
 import { Label } from "@/components/ui/label";
 import { ProductCategory, ProductStatus } from "@prisma/client";
 import { Input } from "@/components/ui/input";

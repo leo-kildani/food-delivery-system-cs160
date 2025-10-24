@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useState } from "react";
-import { deleteProduct, restoreProduct } from "./actions";
+import { deleteProduct, restoreProduct } from "../actions";
 import { Button } from "@/components/ui/button";
 
 type DeleteDialogProps = {

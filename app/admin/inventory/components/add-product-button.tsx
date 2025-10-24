@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { addProductAction, AddProductState } from "./actions";
+import { addProductAction, AddProductState } from "../actions";
 import { useActionState, useState, useEffect } from "react";
 import { ProductCategory } from "@prisma/client";
 
