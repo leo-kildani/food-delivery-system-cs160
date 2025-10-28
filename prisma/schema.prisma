@@ -12,6 +12,7 @@ datasource db {
 enum UserRole {
   USER
   ADMIN
+  EMPL
 }
 
 enum ProductCategory {

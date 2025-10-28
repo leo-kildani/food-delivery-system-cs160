@@ -1,11 +1,16 @@
 import Link from "next/link";
 import LogoutButton from "./logout-button";
+import { createClient } from "@/lib/supabase/server";
 
-export default function UserLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const userRole = data.user?.user_metadata?.role;
+
   return (
     <div>
       <nav className="bg-white shadow-md border-b">
@@ -21,6 +26,14 @@ export default function UserLayout({
               >
                 Inventory
               </Link>
+              {userRole === "admin" && (
+                <Link
+                  href="/admin/employees/"
+                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium pointer-events-auto ml-4"
+                >
+                  Employees
+                </Link>
+              )}
             </div>
             <div className="flex space-x-4 ml-auto">
               <Link
