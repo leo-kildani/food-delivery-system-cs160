@@ -1,6 +1,6 @@
 "use client"
-import { useActionState, useEffect, useState } from "react";
-import { getCartItems, checkoutAction, CheckoutState } from "./actions"
+import { useActionState, useEffect, useState, useRef } from "react";
+import { getCartItems, checkoutAction, CheckoutState, getAddresses } from "./actions"
 
 
 type CartItemWithProduct = {
@@ -16,10 +16,17 @@ type CartItemWithProduct = {
   } | null;
   quantity: number;
 };
+type DeliveryAddress = {
+  id: number;
+  address: string;
+  userId: string;
+};
+
 type CheckoutClientProps = {
   initialCartItems: CartItemWithProduct[];
+  initialAddresses: DeliveryAddress[];
 };
-export default function CheckoutComponent({initialCartItems}: CheckoutClientProps) {
+export default function CheckoutComponent({initialCartItems, initialAddresses}: CheckoutClientProps) {
   const [checkoutState, checkoutFormAction, checkoutPending] = useActionState(
     checkoutAction,
     {} as CheckoutState
@@ -33,6 +40,12 @@ export default function CheckoutComponent({initialCartItems}: CheckoutClientProp
     }, {} as Record<number, number>)
   );
   const [loading, setLoading] = useState(true);
+  const [addresses, setAddresses] = useState<DeliveryAddress[]>(initialAddresses);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+    initialAddresses[0]?.id || null
+  );
+  const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleItemSelection = (idx: number, checked: boolean) => {
     const newSelected = new Set(selectedItems);
@@ -58,6 +71,30 @@ export default function CheckoutComponent({initialCartItems}: CheckoutClientProp
     }));
     console.log(quantities)
   }
+
+  const handleAddressSelect = (addressId: number) => {
+    setSelectedAddressId(addressId);
+    setIsAddressDropdownOpen(false);
+  }
+
+  const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAddressDropdownOpen(false);
+      }
+    };
+
+    if (isAddressDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAddressDropdownOpen]);
   
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
@@ -76,6 +113,11 @@ export default function CheckoutComponent({initialCartItems}: CheckoutClientProp
               pricePerUnit: Number(item.product?.pricePerUnit ?? 0), 
               weightPerUnit: Number(item.product?.weightPerUnit ?? 0)
             })))}
+          />
+          <input
+            type="hidden"
+            name="selectedAddressId"
+            value={selectedAddressId || ''}
           />
           <div className="space-y-4">
             {cartItems.map(
@@ -139,7 +181,93 @@ export default function CheckoutComponent({initialCartItems}: CheckoutClientProp
                   </div>
                 ) : null
             )}
-          </div> 
+          </div>
+
+          {/* Delivery Address Section */}
+          {cartItems.length > 0 && addresses.length > 0 && (
+            <div className="mt-8 border-t border-gray-200 pt-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h2>
+              
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsAddressDropdownOpen(!isAddressDropdownOpen)}
+                  className="w-full p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow text-left flex items-center justify-between"
+                >
+                  <div className="flex-1 min-w-0 flex items-center">
+                    <svg 
+                      className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" 
+                      />
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
+                      />
+                    </svg>
+                    <div className="text-sm font-medium text-gray-900">
+                      {selectedAddress ? selectedAddress.address : 'Select delivery address'}
+                    </div>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 text-gray-400 transition-transform ${isAddressDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isAddressDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {addresses.map((address) => (
+                      <div
+                        key={address.id}
+                        onClick={() => handleAddressSelect(address.id)}
+                        className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors flex items-center ${
+                          selectedAddressId === address.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                        }`}
+                      >
+                        <svg 
+                          className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" 
+                          />
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
+                          />
+                        </svg>
+                        <div className="text-sm font-medium text-gray-900 flex-1 min-w-0">
+                          {address.address}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {cartItems.length > 0 && (
             <div className="mt-8 border-t border-gray-200 pt-6">
               <div className="flex justify-between items-center mb-4">

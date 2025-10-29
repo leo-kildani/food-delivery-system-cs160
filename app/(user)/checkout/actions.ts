@@ -87,6 +87,7 @@ export async function checkoutAction(
   try {
     const selectedItemsJson = formData.get('selectedItems') as string;
     const selectedItems = JSON.parse(selectedItemsJson);
+    const selectedAddressId = formData.get('selectedAddressId') as string;
 
     let userId = await getUserId();
     let cart = await prisma.cart.findUnique({ where: { userId: userId } });
@@ -94,11 +95,17 @@ export async function checkoutAction(
     if (addresses.length <= 0) {
       return { formError: "You do not have an address set" };
     }
+    
+    const selectedAddress = addresses.find(addr => addr.id === parseInt(selectedAddressId));
+    if (!selectedAddress) {
+      return { formError: "Please select a valid delivery address" };
+    }
+    
     const order = await prisma.order.create({
       data: {
         userId: userId,
         status: 'PENDING',
-        toAddress: addresses[0]?.address, 
+        toAddress: selectedAddress.address, 
         createdAt: new Date()
       },
     });
