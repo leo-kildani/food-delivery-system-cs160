@@ -28,14 +28,13 @@ const SignUpSchema = z
         "Password must include at least one lower case, upper case, digit, and symbol characters"
       ),
     confirmPassword: z.string(),
-    streetAddress: z.string().trim().min(1, "Street Address required"),
-    aptNumber: z.string().optional(),
-    city: z.string().trim().min(1, "City is required"),
-    stateCode: z.enum(["CA"], { error: "Only delivery in california allowed" }),
-    postalCode: z
+    address: z
       .string()
-      .trim()
-      .regex(/^\d{5}$/, "Invalid US Postal Code"),
+      .min(1, "Delivery Address Required")
+      .regex(
+        /CA \d{5}, USA$/,
+        "Invalid Address. Please select from the dropdown."
+      ),
   })
   .refine((v) => v.password === v.confirmPassword, {
     message: "Passwords must match",
@@ -59,11 +58,7 @@ export async function signUpAction(
     email: formData.get("email"),
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
-    streetAddress: formData.get("streetAddress"),
-    aptNumber: formData.get("aptNumber"),
-    city: formData.get("city"),
-    stateCode: formData.get("stateCode"),
-    postalCode: formData.get("postalCode"),
+    address: formData.get("address"),
   };
 
   const parsed = SignUpSchema.safeParse(input);
@@ -105,18 +100,13 @@ export async function signUpAction(
     role: "USER",
     addresses: {
       create: {
-        street: parsedData.streetAddress,
-        aptNumber: parsedData.aptNumber,
-        city: parsedData.city,
-        stateCode: parsedData.stateCode,
-        postalCode: parsedData.postalCode,
+        address: parsedData.address,
       },
     },
     cart: {
       create: {},
     },
   };
-
   try {
     await prisma.user.create({ data: user });
   } catch (e) {

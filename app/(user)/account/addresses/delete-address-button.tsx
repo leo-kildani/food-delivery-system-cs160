@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { useActionState } from "react";
-import { deleteAddressAction, type DeliveryAddressState } from "./actions";
+import { deleteAddressAction, type AddressState } from "./actions";
 
 interface DeleteAddressButtonProps {
   addressId: number;
@@ -15,9 +15,9 @@ export function DeleteAddressButton({
   canDelete,
 }: DeleteAddressButtonProps) {
   const [state, formAction, isPending] = useActionState(
-    (prevState: DeliveryAddressState, formData: FormData) =>
+    (prevState: AddressState, formData: FormData) =>
       deleteAddressAction(prevState, formData, addressId),
-    {} as DeliveryAddressState
+    {} as AddressState
   );
 
   return (

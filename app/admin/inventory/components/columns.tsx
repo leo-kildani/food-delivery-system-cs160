@@ -13,6 +13,7 @@ export type TableProduct = {
   pricePerUnit: number;
   weightPerUnit: number;
   quantityOnHand: number;
+  status: $Enums.ProductStatus;
 };
 
 export const columns: ColumnDef<TableProduct>[] = [

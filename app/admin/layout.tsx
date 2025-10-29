@@ -34,6 +34,18 @@ export default async function AdminLayout({
                   Employees
                 </Link>
               )}
+              <Link
+                href="/admin/vehicles/"
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium pointer-events-auto"
+              >
+                Vehicles
+              </Link>
+              <Link
+                href="/admin/analytics/"
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium pointer-events-auto"
+              >
+                Analytics
+              </Link>
             </div>
             <div className="flex space-x-4 ml-auto">
               <Link

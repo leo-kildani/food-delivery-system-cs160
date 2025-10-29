@@ -1,45 +1,68 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { $Enums, Prisma, Product } from "@prisma/client";
+import { $Enums, Prisma, Product, ProductStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import z from "zod";
 
-export async function getProducts(): Promise<Product[]> {
-  return await prisma.product.findMany();
+export async function getActiveProducts(): Promise<Product[]> {
+  return await prisma.product.findMany({
+    where: { status: ProductStatus.ACTIVE },
+  });
 }
 
-export async function deleteProduct(
+export async function getInactiveProducts(): Promise<Product[]> {
+  return await prisma.product.findMany({
+    where: { status: ProductStatus.INACTIVE },
+  });
+}
+
+export async function archiveProduct(
   productId: number
 ): Promise<{ success: boolean }> {
-  // Delete throws an exception on failure (if record doesn't exist)
-  // We expect to only be deleting objects that exist, but still important to catch
+  // Archive throws an exception on failure (if record doesn't exist)
+  // We expect to only be archiving objects that exist, but still important to catch
   try {
-    await prisma.product.delete({
+    await prisma.product.update({
       where: {
         id: productId,
+      },
+      data: {
+        status: ProductStatus.INACTIVE,
       },
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      // Failed to find a record to delete
-      if (e.code === "P2025") {
-        console.error(
-          "admin/inventory/deleteProduct: failed to delete a product. " +
-            e.message
-        );
-      }
-      // Failed to find a record to delete
-      if (e.code === "P2003") {
-        console.error(
-          "admin/inventory/deleteProduct: foreign key constraints. " + e.message
-        );
-      }
       return { success: false };
     }
     throw e; // If not the expected error something may be wrong, throw
   }
-  // Updates the table after deleting item
+  // Updates the table after archiving item
+  revalidatePath("/admin/inventory");
+  return { success: true };
+}
+
+export async function restoreProduct(
+  productId: number
+): Promise<{ success: boolean }> {
+  // Archive throws an exception on failure (if record doesn't exist)
+  // We expect to only be restoring objects that exist, but still important to catch
+  try {
+    await prisma.product.update({
+      where: {
+        id: productId,
+      },
+      data: {
+        status: ProductStatus.ACTIVE,
+      },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      return { success: false };
+    }
+    throw e; // If not the expected error something may be wrong, throw
+  }
+  // Updates the table after restoring item
   revalidatePath("/admin/inventory");
   return { success: true };
 }
