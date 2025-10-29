@@ -3,18 +3,21 @@
 import { Button } from "@/components/ui/button";
 import {
   addToCartAction,
-  CartItem,
   SerializedProduct,
   AddToCartState,
 } from "./actions";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+
 interface ProductCardProps {
   product: SerializedProduct;
   isInCart: boolean;
   quantity: number | undefined; // if product is not already in cart that number will not be displayed
   cartId: number;
+  onCartChange?: () => void;
 }
 
 export function ProductCard({
@@ -22,10 +25,12 @@ export function ProductCard({
   isInCart,
   quantity,
   cartId,
+  onCartChange,
 }: ProductCardProps) {
+  const router = useRouter();
   const [q, setQuantity] = useState(quantity ? quantity : 1);
   const [quantityChanged, setQuantityChanged] = useState(false);
-  const handleQuantityChange = (e) => {
+  const handleQuantityChange = (e: { target: { value: string; }; }) => {
     setQuantity(parseInt(e.target.value) || 1);
     setQuantityChanged(true);
   };
@@ -34,6 +39,10 @@ export function ProductCard({
       const newState = await addToCartAction(prevState, formData);
       if (newState.success) {
         setQuantityChanged(false);
+        // Trigger cart refresh callback
+        if (onCartChange) {
+          onCartChange();
+        }
       }
       return newState;
     },
@@ -118,6 +127,7 @@ export function ProductCard({
                     type="button"
                     className="border border-gray-300 bg-transparent text-gray-700"
                     disabled={isPending}
+                    onClick={() => router.push("/shopping-cart")}
                   >
                     {isPending ? "Updating Cart..." : "In Cart"}
                   </Button>

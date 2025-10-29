@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import ProductSearchGrid from "./product-search-grid";
 import { getLoggedInUser } from "@/app/(user)/actions";
 import { getCartItems } from "../checkout/actions";
+import ChatWidget from "./ChatBot";
 
 export default async function HomePage() {
   const user = await getLoggedInUser();
@@ -30,6 +31,7 @@ export default async function HomePage() {
         cart={cart_items}
         cartId={cartId}
       />
+      <ChatWidget />
     </div>
   );
 }
