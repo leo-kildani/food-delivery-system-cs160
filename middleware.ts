@@ -8,6 +8,8 @@ export async function middleware(request: NextRequest) {
   const supabase = await createClient();
 
   const adminRoutes = ["/admin"];
+  const employeeRoutes = ["/admin/inventory"];
+  const adminOnlyRoutes = ["/admin/employees"];
 
   const { pathname } = request.nextUrl;
 
@@ -15,9 +17,33 @@ export async function middleware(request: NextRequest) {
 
   const userMetadata = data.user?.user_metadata;
 
+  // Check admin routes (only ADMIN can access)
   if (
     adminRoutes.some(
       (route) => pathname.startsWith(route) && userMetadata?.role !== "admin"
+    )
+  ) {
+    // TODO: create error page
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Check admin-only routes (only ADMIN can access)
+  if (
+    adminOnlyRoutes.some(
+      (route) => pathname.startsWith(route) && userMetadata?.role !== "admin"
+    )
+  ) {
+    // TODO: create error page
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Check employee routes (ADMIN and EMPL can access)
+  if (
+    employeeRoutes.some(
+      (route) =>
+        pathname.startsWith(route) &&
+        userMetadata?.role !== "admin" &&
+        userMetadata?.role !== "empl"
     )
   ) {
     // TODO: create error page
