@@ -85,6 +85,7 @@ export async function addToCartAction(
     return { success: false, error: "Failed to add to cart" };
   }
 }
+
 // --- SERVER ACTION ---
 export type SerializedProduct = Omit<
   Product,
@@ -134,7 +135,6 @@ export async function sendChatMessage(messages: ChatMessage[]) {
         .join("\n") || "No products available";
 
     // In sendChatMessage function, update the SYSTEM_PROMPT:
-
     const SYSTEM_PROMPT = `You are an AI assistant for a food delivery service that helps users find ingredients.
 
 Available Products:
