@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { sendChatMessage, SerializedProduct, getSerializedProducts, getCartId, CartItem } from "./actions";
-import ProductSelectionModal from "./product-suggest-modal";
 import { getCartItems } from "../checkout/actions";
+import ProductSelectionModal from "./product-suggest-modal";
 
 type Msg = {
   id: string;
@@ -140,12 +140,12 @@ export default function ChatWidget() {
         
         setMessages(prev => prev.map(m => m.id === thinking.id ? ({
           ...m,
-          content: `I found ${suggestions.length} ingredient${suggestions.length > 1 ? 's' : ''} for you! Check out the popup to add them to your cart.`,
+          content: `I found ${suggestions.length} ingredient${suggestions.length > 1 ? 's' : ''} for you!`,
         }) : m));
       } else {
         setMessages(prev => prev.map(m => m.id === thinking.id ? ({
           ...m,
-          content: assistantMessage,
+          content: "I couldn't generate a response from the provided information. Please try again.",
         }) : m));
       }
     } catch (error) {
