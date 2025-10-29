@@ -39,18 +39,6 @@ export default function ProductSelectionModal({
     setCartItems(initialCartItems);
   }, [initialCartItems]);
 
-  // Refresh cart items when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      const refreshCart = async () => {
-        const items = await getCartItems();
-        setCartItems(items);
-        onCartUpdate(items);
-      };
-      refreshCart();
-    }
-  }, [isOpen, onCartUpdate]);
-
   const handleCartChange = async () => {
     const items = await getCartItems();
     setCartItems(items);
