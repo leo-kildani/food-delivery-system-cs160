@@ -1,10 +1,5 @@
 import { Product } from "@prisma/client";
-import {
-  CartItem,
-  getActiveProducts,
-  SerializedProduct,
-  getCartId,
-} from "./actions";
+import { CartItem, getActiveProducts, getCartId } from "./actions";
 import { redirect } from "next/navigation";
 import ProductSearchGrid from "./product-search-grid";
 import { getLoggedInUser } from "@/app/(user)/actions";
