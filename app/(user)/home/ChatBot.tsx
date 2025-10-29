@@ -35,8 +35,6 @@ export default function ChatWidget() {
   const [allProducts, setAllProducts] = useState<SerializedProduct[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartId, setCartId] = useState<number>(-1);
-  const [loadingData, setLoadingData] = useState(false);
-  const hasLoadedData = useRef(false);
   const listEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -49,34 +47,6 @@ export default function ChatWidget() {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
-
-  // Load products and cart ID when component mounts
-  useEffect(() => {
-    const loadData = async () => {
-      if (hasLoadedData.current) {
-        return;
-      }
-      
-      setLoadingData(true);
-      
-      try {
-        const products = await getSerializedProducts();
-        const id = await getCartId();
-        const items = await getCartItems();
-        
-        setAllProducts(products);
-        setCartId(id);
-        setCartItems(items);
-        hasLoadedData.current = true;
-      } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-    
-    loadData();
-  }, []);
 
   const parseProductSuggestions = (content: string): SuggestedProduct[] | null => {
     try {
@@ -131,8 +101,8 @@ export default function ChatWidget() {
       
       if (suggestions && suggestions.length > 0) {
         // Refresh cart items before showing modal
-        const items = await getCartItems();
-        setCartItems(items);
+        const cartItems = await getCartItems();
+        setCartItems(cartItems);
         
         // Show the modal with suggestions
         setSuggestedProducts(suggestions);
@@ -229,6 +199,17 @@ export default function ChatWidget() {
                       </div>
                     ))}
                     <div ref={listEndRef} />
+                    {suggestedProducts.length > 0 && messages[messages.length - 1]?.content !== "Thinking…" && (
+                      <div className="flex justify-center pt-2">
+                        <Button
+                          onClick={() => setModalOpen(true)}
+                          className="bg-green-600 hover:bg-green-700 text-white shadow-md"
+                          size="sm"
+                        >
+                          View Suggested Products                        
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </ScrollArea>
 

@@ -72,7 +72,7 @@ export default function ProductSelectionModal({
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold">Suggested Ingredients</h2>
+          <h2 className="text-2xl font-bold">Suggested Ingredients ({suggestedProducts.length} items)</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
