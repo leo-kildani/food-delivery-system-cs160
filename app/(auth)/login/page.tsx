@@ -1,43 +1,55 @@
 "use client";
 
-import { Input } from "@/components/ui/input"
-import { useActionState, useState } from "react"
-import { loginAction, LoginState } from "./actions"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import Link from "next/link"
-import { ChevronRight, Eye, EyeOff } from "lucide-react"
+import { Input } from "@/components/ui/input";
+import { useActionState, useState } from "react";
+import { loginAction, LoginState } from "./actions";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { ChevronRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginForm() {
   const [loginState, loginFormAction, loginPending] = useActionState(
     loginAction,
     {} as LoginState
-  )
-  const [showPassword, setShowPassword] = useState(false)
-  
+  );
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center bg-gray-50 font-[Helvetica,Arial,sans-serif]"
-    >
-      
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-[Helvetica,Arial,sans-serif]">
       <div className="w-full max-w-md relative z-10">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-blue-900">On-Demand Food Delivery Service</h1>
-          <p className="text-blue-700 mt-4 text-xl">Sign in to shop for your food products</p>
+          <h1 className="text-5xl font-bold text-blue-900">
+            On-Demand Food Delivery Service
+          </h1>
+          <p className="text-blue-700 mt-4 text-xl">
+            Sign in to shop for your food products
+          </p>
         </div>
 
         {/* Login Card */}
         <Card className="border-none shadow-2xl bg-white backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-2xl font-semibold text-center text-blue-800">Sign In</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-center text-blue-800">
+              Sign In
+            </CardTitle>
           </CardHeader>
-          
+
           <CardContent>
             <form action={loginFormAction} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-blue-800">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-medium text-blue-800"
+                >
                   Email Address
                 </Label>
                 <Input
@@ -57,7 +69,10 @@ export default function LoginForm() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-blue-800">
+                  <Label
+                    htmlFor="password"
+                    className="text-sm font-medium text-blue-800"
+                  >
                     Password
                   </Label>
                 </div>
@@ -89,8 +104,8 @@ export default function LoginForm() {
                 )}
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={loginPending}
                 className="w-full h-11 bg-blue-700 hover:bg-blue-800 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50"
               >
@@ -112,8 +127,8 @@ export default function LoginForm() {
           <CardFooter className="flex flex-col space-y-4 border-t border-blue-100 pt-6">
             <div className="text-center text-sm text-blue-700">
               Don't have an account?{" "}
-              <Link 
-                href="/signup" 
+              <Link
+                href="/signup"
                 className="font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
               >
                 Sign Up
@@ -122,9 +137,7 @@ export default function LoginForm() {
             </div>
           </CardFooter>
         </Card>
-
       </div>
     </div>
   );
-  )
 }
