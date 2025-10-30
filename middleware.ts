@@ -17,37 +17,27 @@ export async function middleware(request: NextRequest) {
 
   const userMetadata = data.user?.user_metadata;
 
-  // Check admin routes (only ADMIN can access)
-  if (
-    adminRoutes.some(
-      (route) => pathname.startsWith(route) && userMetadata?.role !== "admin"
-    )
-  ) {
-    // TODO: create error page
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Check employee routes FIRST (ADMIN and EMPL can access)
+  if (employeeRoutes.some((route) => pathname.startsWith(route))) {
+    if (userMetadata?.role !== "admin" && userMetadata?.role !== "empl") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return response; // Allow access if user is admin or empl
   }
 
   // Check admin-only routes (only ADMIN can access)
-  if (
-    adminOnlyRoutes.some(
-      (route) => pathname.startsWith(route) && userMetadata?.role !== "admin"
-    )
-  ) {
-    // TODO: create error page
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
+    if (userMetadata?.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return response;
   }
 
-  // Check employee routes (ADMIN and EMPL can access)
-  if (
-    employeeRoutes.some(
-      (route) =>
-        pathname.startsWith(route) &&
-        userMetadata?.role !== "admin" &&
-        userMetadata?.role !== "empl"
-    )
-  ) {
-    // TODO: create error page
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Check general admin routes (only ADMIN can access)
+  if (adminRoutes.some((route) => pathname.startsWith(route))) {
+    if (userMetadata?.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
   }
   return response;
 }
