@@ -13,6 +13,7 @@ interface SuggestedProduct {
   quantity: number;
 }
 
+//Interface for inputs given from ChatBot.tsx file to give to client
 interface ProductSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,6 +33,7 @@ export default function ProductSelectionModal({
   cartItems: initialCartItems,
   onCartUpdate,
 }: ProductSelectionModalProps) {
+
   const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems);
 
   // Update local cart items when prop changes
@@ -39,13 +41,14 @@ export default function ProductSelectionModal({
     setCartItems(initialCartItems);
   }, [initialCartItems]);
 
+  //When cart updates, we handle such change
   const handleCartChange = async () => {
-    const items = await getCartItems();
-    setCartItems(items);
-    onCartUpdate(items);
+    const cartItems = await getCartItems();
+    setCartItems(cartItems);
+    onCartUpdate(cartItems);
   };
 
-  // Match suggested products with full product data
+  // Match suggested products with full product data from DB and our existing cart information
   const matchedProducts = suggestedProducts
     .map(sp => {
       const product = allProducts.find(p => p.id === sp.productID);

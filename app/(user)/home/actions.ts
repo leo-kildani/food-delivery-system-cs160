@@ -126,7 +126,7 @@ export async function sendChatMessage(messages: ChatMessage[]) {
     // Use the existing getActiveProducts function
     const products = await getActiveProducts();
 
-    // Format products for the AI context with ID, name, and ingredients
+    // Format all products in DB for the AI context with ID, name, and ingredients
     const productsContext =
       products
         ?.map(
@@ -172,10 +172,11 @@ IMPORTANT:
       response_format: { type: "json_object" },
     });
 
+    //JSON_OBJECT
     const assistantMessage = response.choices[0].message.content;
 
     return {
-      content: assistantMessage,
+      content: assistantMessage, //return a JSON_OBJECT of suggested products
     };
   } catch (error) {
     console.error("Chat API error:", error);

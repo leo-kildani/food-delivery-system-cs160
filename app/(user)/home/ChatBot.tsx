@@ -38,16 +38,19 @@ export default function ChatWidget() {
   const listEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  //SCROLLING IN CHAT
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
 
+  //OPEN CHATWIDGET
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
 
+  //TAKES JSON_OBJ from openAI and parses it. Makes it an obj in which e.g. (obj.productName would return "Spinach");
   const parseProductSuggestions = (content: string): SuggestedProduct[] | null => {
     try {
       const parsed = JSON.parse(content);
@@ -65,6 +68,7 @@ export default function ChatWidget() {
     }
   };
 
+  //USERS MESSAGE SENDS TO OPENAI
   const sendToOpenAI = async (userText: string, currentMessages: Msg[]) => {
     // Check if data is loaded before processing
     if (allProducts.length === 0 || cartId === -1) {
@@ -80,6 +84,7 @@ export default function ChatWidget() {
       }
     }
 
+    //AI message thinking
     const thinking: Msg = {
       id: crypto.randomUUID(),
       role: "assistant",
@@ -87,6 +92,7 @@ export default function ChatWidget() {
     };
     setMessages(prev => [...prev, thinking]);
 
+    //RESPONSE CALLS sendChatMESSAGE in actions.ts which return a JSON_OBJECT of suggested products
     try {
       const response = await sendChatMessage(
         currentMessages.map(m => ({
@@ -97,8 +103,10 @@ export default function ChatWidget() {
 
       const assistantMessage = response.content || "I couldn't generate a response. Please try again."; //JSON OBJECT
 
-      const suggestions = parseProductSuggestions(assistantMessage); //PARSE JSON
-      
+      //PARSE JSON_OBJECT to return an Typescript object
+      const suggestions = parseProductSuggestions(assistantMessage);       
+
+      //IF THERE ARE SUGGESTED PRODUCTS
       if (suggestions && suggestions.length > 0) {
         // Refresh cart items before showing modal
         const cartItems = await getCartItems();
@@ -112,7 +120,9 @@ export default function ChatWidget() {
           ...m,
           content: `I found ${suggestions.length} ingredient${suggestions.length > 1 ? 's' : ''} for you!`,
         }) : m));
-      } else {
+      } 
+      //NO SUGGESTED PRODUCTS, openai gave no products bc not enough info, invalidation, etc.
+      else {
         setMessages(prev => prev.map(m => m.id === thinking.id ? ({
           ...m,
           content: "I couldn't generate a response from the provided information. Please try again.",
@@ -127,17 +137,21 @@ export default function ChatWidget() {
     }
   };
 
+  // --- TAKE USER INPUT AND SEND IT TO OPENAI --- 
   const onSend = () => {
     const text = input.trim();
     if (!text) return;
 
+    //Text is userMsg, role user
     const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     
+    //Send userMsg to OPENAI
     sendToOpenAI(text, [...messages, userMsg]);
   };
 
+  // --- MESSAGE ENTER EVENT --- 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -145,6 +159,7 @@ export default function ChatWidget() {
     }
   };
 
+  // --- CART UPDATES WHEN MODAL USER ACTIONS OCCUR --- 
   const handleCartUpdate = useCallback((items: CartItem[]) => {
   setCartItems(items);
 }, []);
