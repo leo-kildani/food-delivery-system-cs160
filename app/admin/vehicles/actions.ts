@@ -15,11 +15,11 @@ export async function deployVehicleAction(
   formData: FormData
 ): Promise<DeployState> {
   try {
-    const vehicleId = parseInt(formData.get('vehicleId') as string);
-    const orderIds = JSON.parse(formData.get('orderIds') as string) as number[];
+    const vehicleId = parseInt(formData.get("vehicleId") as string);
+    const orderIds = JSON.parse(formData.get("orderIds") as string) as number[];
 
     if (!vehicleId || !orderIds || orderIds.length === 0) {
-      return { success: false, error: 'Invalid vehicle or no orders assigned' };
+      return { success: false, error: "Invalid vehicle or no orders assigned" };
     }
 
     // Use transaction to ensure all operations succeed or fail together
@@ -27,36 +27,37 @@ export async function deployVehicleAction(
       // Update vehicle status to IN_TRANSIT (deployed)
       const updatedVehicle = await tx.vehicle.update({
         where: { id: vehicleId },
-        data: { status: 'IN_TRANSIT' }
+        data: { status: "IN_TRANSIT" },
       });
 
       // Update all assigned orders
       const updatedOrders = await tx.order.updateMany({
         where: { id: { in: orderIds } },
-        data: { 
-          status: 'IN_TRANSIT',
-          VehicleId: vehicleId
-        }
+        data: {
+          status: "IN_TRANSIT",
+          VehicleId: vehicleId,
+        },
       });
 
       return { vehicle: updatedVehicle, orderCount: updatedOrders.count };
     });
 
-    console.log(`Vehicle ${vehicleId} deployed with ${result.orderCount} orders`);
-    
-    // Revalidate the page to show updated data
-    revalidatePath('/admin/vehicles');
-    
-    return { 
-      success: true, 
-      deployedVehicleId: vehicleId 
-    };
+    console.log(
+      `Vehicle ${vehicleId} deployed with ${result.orderCount} orders`
+    );
 
+    // Revalidate the page to show updated data
+    revalidatePath("/admin/vehicles");
+
+    return {
+      success: true,
+      deployedVehicleId: vehicleId,
+    };
   } catch (error) {
-    console.error('Error deploying vehicle:', error);
-    return { 
-      success: false, 
-      error: 'Failed to deploy vehicle. Please try again.' 
+    console.error("Error deploying vehicle:", error);
+    return {
+      success: false,
+      error: "Failed to deploy vehicle. Please try again.",
     };
   }
 }
@@ -64,6 +65,17 @@ export async function deployVehicleAction(
 export interface VehicleWithOrders extends Vehicle {
   assignedOrdersCount: number;
   totalAssignedWeight: number;
+  orders: Array<{
+    id: number;
+    status: string;
+    toAddress: string;
+    orderItems: Array<{
+      id: number;
+      pricePerUnit: number;
+      weightPerUnit: number;
+      quantity: number;
+    }>;
+  }>;
 }
 
 export async function getVehicles(): Promise<VehicleWithOrders[]> {
@@ -71,20 +83,20 @@ export async function getVehicles(): Promise<VehicleWithOrders[]> {
     include: {
       orders: {
         include: {
-          orderItems: true
-        }
-      }
-    }
+          orderItems: true,
+        },
+      },
+    },
   });
 
   // Calculate order count and total weight for each vehicle
-  const vehiclesWithOrders = vehicles.map(vehicle => {
+  const vehiclesWithOrders = vehicles.map((vehicle) => {
     const assignedOrdersCount = vehicle.orders.length;
-    
+
     // Calculate total weight from all assigned orders
     const totalAssignedWeight = vehicle.orders.reduce((totalWeight, order) => {
       const orderWeight = order.orderItems.reduce((orderTotal, item) => {
-        return orderTotal + (item.weightPerUnit.toNumber() * item.quantity);
+        return orderTotal + item.weightPerUnit.toNumber() * item.quantity;
       }, 0);
       return totalWeight + orderWeight;
     }, 0);
@@ -93,16 +105,16 @@ export async function getVehicles(): Promise<VehicleWithOrders[]> {
     const vehicleData = {
       ...vehicle,
       // Convert any Decimal fields if they exist
-      orders: vehicle.orders.map(order => ({
+      orders: vehicle.orders.map((order) => ({
         ...order,
-        orderItems: order.orderItems.map(item => ({
+        orderItems: order.orderItems.map((item) => ({
           ...item,
           pricePerUnit: item.pricePerUnit.toNumber(),
-          weightPerUnit: item.weightPerUnit.toNumber()
-        }))
+          weightPerUnit: item.weightPerUnit.toNumber(),
+        })),
       })),
       assignedOrdersCount,
-      totalAssignedWeight
+      totalAssignedWeight,
     };
 
     return vehicleData;
@@ -111,21 +123,21 @@ export async function getVehicles(): Promise<VehicleWithOrders[]> {
   return vehiclesWithOrders;
 }
 interface PendingOrder {
-  order: Order,
-  totalPrice: number,
-  totalWeight: number,
+  order: Order;
+  totalPrice: number;
+  totalWeight: number;
 }
 export async function getPendingOrders(): Promise<PendingOrder[]> {
   const orders = await prisma.order.findMany({
     where: {
-      status: 'PENDING'
-    }
-  })
-  const packaged_orders= orders.map(async (order) => {
+      status: "PENDING",
+    },
+  });
+  const packaged_orders = orders.map(async (order) => {
     const orderItems = await prisma.orderItem.findMany({
       where: {
-        orderId: order.id
-      }
+        orderId: order.id,
+      },
     });
     // Calculate total price and weight if needed
     const items = await orderItems;
