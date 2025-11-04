@@ -148,6 +148,22 @@ export default function ShoppingCartClient({
                     Remove
                   </button>
                   <div className="flex items-start gap-4 pr-12">
+                  {/* Product Image */}
+                    <div className="flex-shrink-0">
+                      <div className="relative h-32 w-32 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+                        {p.imageUrl ? (
+                          <img
+                            src={p.imageUrl}
+                            alt={p.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-gray-400">
+                            <span className="text-sm">No image</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <div className="flex-1">
                       <h3 className="mb-1 text-lg font-semibold">{p.name}</h3>
                       {p.description && (
