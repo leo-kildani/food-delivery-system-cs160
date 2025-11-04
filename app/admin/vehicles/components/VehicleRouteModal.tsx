@@ -35,6 +35,7 @@ export default function VehicleRouteModal({
   const mapInit = useRef(false);
   const fetchedRef = useRef(false);
   const [eta, setEta] = useState(-1);
+  const [optimizedOrders, setOptimizedOrders] = useState(orders);
 
   // Initialize Google Maps API options once
   useEffect(() => {
@@ -149,6 +150,16 @@ export default function VehicleRouteModal({
 
           const route = result.routes[0];
 
+          // Reorder orders based on optimized route
+          if (route.optimizedIntermediateWaypointIndices) {
+            const optimizedIndices = route.optimizedIntermediateWaypointIndices;
+            const reorderedOrders = optimizedIndices.map(
+              (originalIndex: number) => orders[originalIndex]
+            );
+            setOptimizedOrders(reorderedOrders);
+            console.log("Reordered orders:", reorderedOrders);
+          }
+
           // Ensure the 'legs' field is requested in your ComputeRoutesRequest
           // For example: fields: ['legs', 'path']
 
@@ -233,16 +244,16 @@ export default function VehicleRouteModal({
             {/* Order List */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                Delivery Stops ({orders.length})
+                Delivery Stops ({optimizedOrders.length})
               </h3>
-              {orders.length === 0 ? (
+              {optimizedOrders.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No orders assigned to this vehicle</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {orders.map((order, index) => (
+                  {optimizedOrders.map((order, index) => (
                     <div
                       key={order.id}
                       className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -297,8 +308,8 @@ export default function VehicleRouteModal({
                     {eta} minutes
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Complete route with {orders.length}{" "}
-                    {orders.length === 1 ? "stop" : "stops"}
+                    Complete route with {optimizedOrders.length}{" "}
+                    {optimizedOrders.length === 1 ? "stop" : "stops"}
                   </p>
                 </div>
               </div>
