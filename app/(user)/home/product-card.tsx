@@ -1,16 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  addToCartAction,
-  SerializedProduct,
-  AddToCartState,
-} from "./actions";
+import { addToCartAction, SerializedProduct, AddToCartState } from "./actions";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import Image from "next/image";
 
 interface ProductCardProps {
   product: SerializedProduct;
@@ -30,7 +26,7 @@ export function ProductCard({
   const router = useRouter();
   const [q, setQuantity] = useState(quantity ? quantity : 1);
   const [quantityChanged, setQuantityChanged] = useState(false);
-  const handleQuantityChange = (e: { target: { value: string; }; }) => {
+  const handleQuantityChange = (e: { target: { value: string } }) => {
     setQuantity(parseInt(e.target.value) || 1);
     setQuantityChanged(true);
   };
@@ -52,6 +48,33 @@ export function ProductCard({
   return (
     <Card className="border-black/10 hover:shadow-lg transition-shadow h-full flex flex-col">
       <CardHeader className="pb-3">
+        <div className="relative w-full aspect-[3/2] bg-gray-100 overflow-hidden rounded-md">
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              // Keep cover; align to center (or tweak with object-center/top/etc.)
+              className="object-cover"
+              // Tailor these to your breakpoints/columns
+              sizes="
+              (max-width: 640px) 100vw,
+              (max-width: 1024px) 50vw,
+              33vw"
+              quality={86}
+              // Optional UX niceties:
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMycgaGVpZ2h0PScyJy8+" // tiny fake blur (replace with LQIP if you have one)
+              // Use priority on LCP images only (e.g., hero or first card above the fold)
+              priority={false}
+            />
+          ) : (
+            /* fallback ... */
+            <div className="flex items-center justify-center h-full text-gray-400">
+              No image
+            </div>
+          )}
+        </div>
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-semibold leading-tight flex-1">
             {product.name}
