@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
   const adminRoutes = ["/admin"];
   const employeeRoutes = ["/admin/inventory"];
   const adminOnlyRoutes = ["/admin/employees"];
+  const orderRoutes = ["/admin/orders"];
 
   const { pathname } = request.nextUrl;
 
@@ -27,6 +28,14 @@ export async function middleware(request: NextRequest) {
 
   // Check admin-only routes (only ADMIN can access)
   if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
+    if (userMetadata?.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return response;
+  }
+
+  // Check order routes (only ADMIN can access)
+  if (orderRoutes.some((route) => pathname.startsWith(route))) {
     if (userMetadata?.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
