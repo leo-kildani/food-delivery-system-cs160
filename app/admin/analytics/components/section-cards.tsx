@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PieChartProducts } from "./product-pie-chart";
-import { RecentOrder, PopularProductData } from "./actions";
+import { RecentOrder, PopularProductData } from "../actions";
 import { OrdersTable } from "./orders-table";
 import { $Enums } from "@prisma/client";
 

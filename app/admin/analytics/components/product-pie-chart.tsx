@@ -15,7 +15,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { PopularProductData } from "./actions";
+import { PopularProductData } from "../actions";
 export const description = "Most popular products";
 
 type PieChartProductsProps = {
