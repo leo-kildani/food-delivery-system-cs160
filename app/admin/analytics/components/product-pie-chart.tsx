@@ -1,14 +1,5 @@
 "use client";
-import { TrendingUp } from "lucide-react";
 import { Pie, PieChart } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
@@ -23,7 +14,8 @@ type PieChartProductsProps = {
 };
 
 export function PieChartProducts(data: PieChartProductsProps) {
-  const chartColors = ["#e16704", "#d6395b", "#993f84", "#464882", "#013f5c"];
+  // https://ui.shadcn.com/charts/pie#charts
+  const chartColors = ["#e16704", "#d6395b", "#993f84", "#464882", "#013f5c"]; // https://www.learnui.design/tools/data-color-picker.html
   const chartData = [];
   for (const [index, element] of data.popularProductData.entries()) {
     if (index >= 5) break; // This should not execute due to actions.ts only selecting 5 elements max
@@ -39,8 +31,8 @@ export function PieChartProducts(data: PieChartProductsProps) {
     },
     product1: {
       label: chartData[0].name,
-      color: chartColors[0],
-    },
+      color: chartColors[0], // tbh I'm not entirely sure what this does; I'm pretty sure the fill in chartData is all that matters
+    }, // https://ui.shadcn.com/docs/components/chart#chart-config
     product2: {
       label: chartData[1].name,
       color: chartColors[1],

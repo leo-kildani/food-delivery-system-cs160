@@ -1,4 +1,4 @@
-import { $Enums, Prisma } from "@prisma/client";
+import { $Enums } from "@prisma/client";
 import { ReactNode } from "react";
 import {
   Table,
@@ -24,8 +24,6 @@ interface OrdersTableProps {
 }
 
 export function OrdersTable({ orderList }: OrdersTableProps): ReactNode {
-  const limitedData = orderList.slice(0, 8);
-
   function getStatusColor(status: string): string {
     switch (status) {
       case "PENDING":
@@ -41,6 +39,7 @@ export function OrdersTable({ orderList }: OrdersTableProps): ReactNode {
 
   return (
     <div className="overflow-x-auto">
+      {/* Scrollable table */}
       <ScrollArea className="h-60">
         <Table>
           <TableHeader>

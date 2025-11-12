@@ -1,12 +1,13 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { Order, OrderItem, Product } from "@prisma/client";
+import { Order } from "@prisma/client";
 
 export interface Activity {
   activeUsers: number;
   activeOrders: number;
 }
+// Gets number of active users (users who placed orders in last 30 days) and number of orders in last 30 days
 export async function getActivity(): Promise<Activity> {
   const activeOrders = await prisma.order.findMany({
     where: {
@@ -26,6 +27,7 @@ export interface RecentOrder {
   order: Order;
   totalWeight: number;
 }
+// Gets orders from last 7 days and their total weight
 export async function getRecentOrders(): Promise<RecentOrder[]> {
   const orders = await prisma.order.findMany({
     where: {
@@ -56,7 +58,7 @@ export interface PopularProductData {
   quantity: number;
   frequency: number;
 }
-
+// Gets the 5 most popular products from orders in the last 30 days, along with the quantities sold and frequency seen in orders as a percentage
 export async function getPopularProducts(): Promise<PopularProductData[]> {
   // Get orders from last 30 days
   const recentOrderIds = (
