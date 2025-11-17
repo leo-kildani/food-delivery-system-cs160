@@ -11,6 +11,11 @@ import { MapPin, Navigation, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { getOrderStatuses } from "@/app/admin/vehicles/actions";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { startVehicleWorkerAction } from "@/app/admin/vehicles/actions";
 import { STORE_LOCATION } from "@/lib/constants";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
@@ -31,11 +36,13 @@ export default function VehicleRouteModal({
   vehicleId,
   orders,
 }: VehicleRouteModalProps) {
+  const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
   const fetchedRef = useRef(false);
   const [eta, setEta] = useState(-1);
   const [optimizedOrders, setOptimizedOrders] = useState(orders);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Initialize Google Maps API options once
   useEffect(() => {
@@ -151,14 +158,20 @@ export default function VehicleRouteModal({
           const route = result.routes[0];
 
           // Reorder orders based on optimized route
-          if (route.optimizedIntermediateWaypointIndices) {
-            const optimizedIndices = route.optimizedIntermediateWaypointIndices;
-            const reorderedOrders = optimizedIndices.map(
-              (originalIndex: number) => orders[originalIndex]
-            );
-            setOptimizedOrders(reorderedOrders);
-            console.log("Reordered orders:", reorderedOrders);
-          }
+            if (route.optimizedIntermediateWaypointIndices) {
+              const optimizedIndices = route.optimizedIntermediateWaypointIndices;
+              // The optimized indices should map into the intermediates array (orders).
+              // Be defensive: filter out any out-of-range indices and falsy results.
+              const reorderedOrders = optimizedIndices
+                .map((originalIndex: number) => orders[originalIndex])
+                .filter((o: any) => o !== undefined && o !== null);
+              if (reorderedOrders.length > 0) {
+                setOptimizedOrders(reorderedOrders);
+                console.log("Reordered orders:", reorderedOrders);
+              } else {
+                console.warn("Optimized indices produced no valid order mapping, keeping original order list.");
+              }
+            }
 
           // Ensure the 'legs' field is requested in your ComputeRoutesRequest
           // For example: fields: ['legs', 'path']
@@ -209,6 +222,94 @@ export default function VehicleRouteModal({
     };
     initMaps();
   }, [orders, isOpen]);
+
+  // Start worker once ETA and optimizedOrders are available
+  const workerStartedRef = useRef(false);
+  useEffect(() => {
+    if (eta <= 0) return;
+    if (!optimizedOrders || optimizedOrders.length === 0) return;
+    // Only start worker if at least one order is already IN_TRANSIT
+    const validOptimized = optimizedOrders.filter(Boolean);
+    const hasInTransit = validOptimized.some((o) => o.status === "IN_TRANSIT");
+    if (!hasInTransit) return;
+    if (workerStartedRef.current) return;
+
+    workerStartedRef.current = true;
+
+    const startWorker = async () => {
+      try {
+        // Call server action exported from actions.ts
+        const orderIds = optimizedOrders.filter(Boolean).map((o) => o.id);
+        const data = await startVehicleWorkerAction({
+          vehicleId,
+          orderIds,
+          etaMinutes: eta,
+        } as any);
+        console.log("start worker response", data);
+        if (data && data.success) {
+          // Show a persistent toast and keep the modal open; also show
+          // a small inline success message so the user sees immediate feedback.
+          toast.success("Worker scheduled — orders will complete automatically");
+          setSuccessMessage("Worker scheduled — orders will complete automatically");
+          // Start polling for completion: check every 4s for order status changes
+          const orderIds = optimizedOrders.filter(Boolean).map((o) => o.id);
+          let isPolling = true;
+          const pollInterval = 4000;
+          const poll = async () => {
+            if (!isPolling) return;
+            try {
+              const res = await getOrderStatuses({ orderIds } as any);
+              if (res && res.success && Array.isArray(res.orders)) {
+                const allComplete = res.orders.every((o: any) => o.status === "COMPLETE");
+                if (allComplete) {
+                  toast.success("Orders completed");
+                  setSuccessMessage("Orders completed");
+                  isPolling = false;
+                  try {
+                    router.refresh();
+                  } catch (e) {
+                    console.warn("router.refresh failed", e);
+                  }
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Polling error", e);
+            }
+            if (isPolling) setTimeout(poll, pollInterval);
+          };
+          poll();
+        }
+      } catch (e) {
+        console.error("Failed to start vehicle worker (server action)", e);
+      }
+    };
+
+    startWorker();
+  }, [eta, optimizedOrders, vehicleId]);
+
+  // Manual fallback: complete now
+  const completeNow = async () => {
+    try {
+      const orderIds = optimizedOrders.filter(Boolean).map((o) => o.id);
+      const res = await startVehicleWorkerAction({
+        vehicleId,
+        orderIds,
+        etaMinutes: 0.001,
+      } as any);
+      if (res && res.success) {
+        toast.success("Orders completed");
+        setSuccessMessage("Orders completed");
+        try {
+          router.refresh();
+        } catch (e) {
+          console.warn("router.refresh failed", e);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={changeIsOpen}>
@@ -266,7 +367,7 @@ export default function VehicleRouteModal({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <p className="font-semibold text-sm">
-                            Order #{order.id}
+                            Order <span className="font-semibold">#{order.id}</span>
                           </p>
                           <Badge
                             variant="outline"
@@ -307,13 +408,21 @@ export default function VehicleRouteModal({
                   <p className="text-2xl font-bold text-blue-900">
                     {eta} minutes
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Complete route with {optimizedOrders.length}{" "}
-                    {optimizedOrders.length === 1 ? "stop" : "stops"}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Complete route with {optimizedOrders.length}{" "}
+                      {optimizedOrders.length === 1 ? "stop" : "stops"}
+                    </p>
+                    <Button variant="outline" size="sm" onClick={completeNow}>
+                      Complete Now
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
+            {successMessage ? (
+              <div className="ml-3 text-sm text-green-600">{successMessage}</div>
+            ) : null}
           </div>
         </ScrollArea>
       </DialogContent>
