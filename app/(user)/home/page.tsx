@@ -1,20 +1,25 @@
 import { Product } from "@prisma/client";
 import { CartItem, getActiveProducts, getCartId } from "./actions";
-import { redirect } from "next/navigation";
 import ProductSearchGrid from "./product-search-grid";
 import { getLoggedInUser } from "@/app/(user)/actions";
 import { getCartItems } from "../checkout/actions";
 import ChatWidget from "./ChatBot";
 
 export default async function HomePage() {
+  // Check if user is logged in
   const user = await getLoggedInUser();
 
-  if (!user) {
-    redirect("/login");
+  // Only fetch cart data if user is logged in
+  // If user is not logged in, cart and cartId will be null
+  let cartItems: CartItem[] | null = null;
+  let cartId: number | null = null;
+
+  if (user) {
+    cartItems = await getCartItems();
+    cartId = await getCartId();
   }
+
   const products: Product[] = await getActiveProducts();
-  const cart_items: CartItem[] = await getCartItems();
-  const cartId: number = await getCartId();
   // serialize products to pass to client components
   const serializedProducts = products.map((p) => ({
     ...p,
@@ -26,9 +31,10 @@ export default async function HomePage() {
       <h1 className="text-2xl font-bold mb-6">Products</h1>
 
       {/* Search + grid rendering moved to a client component */}
+      {/* cart and cartId will be null if user is not logged in */}
       <ProductSearchGrid
         products={serializedProducts}
-        cart={cart_items}
+        cart={cartItems}
         cartId={cartId}
       />
       <ChatWidget />
