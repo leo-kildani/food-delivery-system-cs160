@@ -9,9 +9,8 @@ export default async function UserLayout({
   children: React.ReactNode;
 }) {
   const user = await getLoggedInUser();
-  if (!user) {
-    return <></>;
-  }
+  // Guest users (not logged in) can only access the home page
+  const isGuest = !user;
 
   return (
     <div>
@@ -34,27 +33,53 @@ export default async function UserLayout({
 
             {/* Right Section - Navigation & Actions */}
             <div className="flex items-center space-x-3">
+              {/* Home link - always enabled for all users */}
               <Link
                 href="/home"
                 className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
               >
                 Home
               </Link>
-              <Link
-                href="/account/details"
-                className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
-              >
-                Account
-              </Link>
-              <Link
-                href="/admin/inventory"
-                className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
-                hidden={user.role !== "ADMIN"}
-              >
-                Admin
-              </Link>
-              <ShoppingCartButton></ShoppingCartButton>
-              <LogoutButton></LogoutButton>
+
+              {/* Account link - only clickable for logged-in users */}
+              {isGuest ? (
+                <span className="text-blue-300/50 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed">
+                  Account
+                </span>
+              ) : (
+                <Link
+                  href="/account/details"
+                  className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
+                >
+                  Account
+                </Link>
+              )}
+
+              {/* Admin link - only shown for admin users */}
+              {user?.role === "ADMIN" && (
+                <Link
+                  href="/admin/inventory"
+                  className="text-white hover:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
+                >
+                  Admin
+                </Link>
+              )}
+
+              {/* Shopping cart - always shown but disabled for guest users */}
+              <ShoppingCartButton disabled={isGuest} />
+
+              {/* Logout - only shown for logged-in users */}
+              {!isGuest && <LogoutButton />}
+
+              {/* Login/Signup buttons - only shown for guest users */}
+              {isGuest && (
+                <Link
+                  href="/login"
+                  className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                >
+                  Log In
+                </Link>
+              )}
             </div>
           </div>
         </div>
