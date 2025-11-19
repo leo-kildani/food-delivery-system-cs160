@@ -10,8 +10,9 @@ import { useSearchParams } from "next/navigation";
 
 interface ProductSearchProps {
   products: SerializedProduct[];
-  cart: CartItem[];
-  cartId: number;
+  // cart and cartId will be null if user is not logged in
+  cart: CartItem[] | null;
+  cartId: number | null;
 }
 
 const PAGE_SIZE = 9;
@@ -27,12 +28,15 @@ export default function ProductSearchGrid({
   const searchParams = useSearchParams();
   const setSearch = useSetSearchParam();
 
-  // check if a certain product is already in cart and keep a list of that
+  // Build a map of cart items (productId -> quantity)
+  // If cart is null (user not logged in), the map will be empty
   let cartItemMap: Map<number, number> = new Map();
 
-  cart.forEach((cartItem) => {
-    cartItemMap.set(cartItem.product.id, cartItem.quantity);
-  });
+  if (cart) {
+    cart.forEach((cartItem) => {
+      cartItemMap.set(cartItem.product.id, cartItem.quantity);
+    });
+  }
 
   const fuse = useMemo(
     () =>
@@ -107,6 +111,8 @@ export default function ProductSearchGrid({
             product={product}
             isInCart={cartItemMap.has(product.id)}
             quantity={cartItemMap.get(product.id)}
+            // Pass cartId only if user is logged in (not null)
+            // If null, cart functionality will be hidden in ProductCard
             cartId={cartId}
           />
         ))}

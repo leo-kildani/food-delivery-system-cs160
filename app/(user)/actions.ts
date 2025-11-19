@@ -11,10 +11,16 @@ export async function getLoggedInUser(): Promise<User | null> {
     const supabase = await createClient();
     //   Get logged in user
     const authUser = await supabase.auth.getUser();
+
+    // If no authenticated user, return null early
+    if (!authUser.data.user?.id) {
+      return null;
+    }
+
     //   Retrieve user information from auth user id
     const user = await prisma.user.findUnique({
       where: {
-        authId: authUser.data.user?.id,
+        authId: authUser.data.user.id,
       },
     });
     return user;
