@@ -73,14 +73,12 @@ export default async function UserLayout({
 
               {/* Login/Signup buttons - only shown for guest users */}
               {isGuest && (
-                <>
-                  <Link
-                    href="/login"
-                    className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                  >
-                    Log In
-                  </Link>
-                </>
+                <Link
+                  href="/login"
+                  className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                >
+                  Log In
+                </Link>
               )}
             </div>
           </div>

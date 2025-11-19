@@ -11,13 +11,8 @@ export default async function HomePage() {
 
   // Only fetch cart data if user is logged in
   // If user is not logged in, cart and cartId will be null
-  let cartItems: CartItem[] | null = null;
-  let cartId: number | null = null;
-
-  if (user) {
-    cartItems = await getCartItems();
-    cartId = await getCartId();
-  }
+  const cartItems: CartItem[] | null = user ? await getCartItems() : null;
+  const cartId: number | null = user ? await getCartId() : null;
 
   const products: Product[] = await getActiveProducts();
   // serialize products to pass to client components
