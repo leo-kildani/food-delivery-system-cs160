@@ -60,6 +60,12 @@ export default async function AdminLayout({
                 Vehicles
               </Link>
               <Link
+                href="/admin/orders/"
+                className="text-white hover:text-cyan-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 hover:bg-white/10"
+              >
+                Orders
+              </Link>
+              <Link
                 href="/home"
                 className="text-slate-300 hover:text-cyan-100 px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-white/10"
               >
