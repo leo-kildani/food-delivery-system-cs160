@@ -16,6 +16,7 @@ type ProductProp = {
   weightPerUnit: number;
   quantityOnHand: number;
   status: $Enums.ProductStatus;
+  imageUrl: string | null;
 };
 
 export default function AdminInventoryClient({

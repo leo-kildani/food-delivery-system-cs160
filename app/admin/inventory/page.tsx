@@ -14,6 +14,7 @@ const fixProductNumbers = (product: Product) => {
     weightPerUnit: product.weightPerUnit.toNumber(),
     quantityOnHand: product.quantityOnHand,
     status: product.status,
+    imageUrl: product.imageUrl,
   };
 };
 
