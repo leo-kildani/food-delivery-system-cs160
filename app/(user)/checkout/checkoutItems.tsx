@@ -96,16 +96,10 @@ export default function CheckoutComponent({
   // calculate only the selected items price and weighht
 
   const handleQuantityChange = (change: number, idx: number) => {
-    setQuantities((prev) => {
-      const current = prev[idx] || 0;
-      const product = cartItems[idx]?.product;
-      const max = product ? Number(product.quantityOnHand) : Infinity;
-      const next = Math.max(0, Math.min(max, current + change));
-      return {
-        ...prev,
-        [idx]: next,
-      };
-    });
+    setQuantities((prev) => ({
+      ...prev,
+      [idx]: Math.max(0, prev[idx] + change),
+    }));
     console.log(quantities);
   };
 
@@ -120,7 +114,9 @@ export default function CheckoutComponent({
 
   // compute total selected weight once
   const totalSelectedWeight = selectedItemsData.reduce((total, item) => {
-    const weight = item?.product?.weightPerUnit ? Number(item.product.weightPerUnit) : 0;
+    const weight = item?.product?.weightPerUnit
+      ? Number(item.product.weightPerUnit)
+      : 0;
     const quantity = quantities[item.idx] || 0;
     return total + weight * quantity;
   }, 0);
@@ -191,8 +187,16 @@ export default function CheckoutComponent({
             name="selectedAddressId"
             value={selectedAddressId || ""}
           />
-          <input type="hidden" name="additionalFee" value={totalSelectedWeight > 20 ? 10 : 0} />
-          <input type="hidden" name="overweightBlocked" value={totalSelectedWeight > 200 ? "1" : "0"} />
+          <input
+            type="hidden"
+            name="additionalFee"
+            value={totalSelectedWeight > 20 ? 10 : 0}
+          />
+          <input
+            type="hidden"
+            name="overweightBlocked"
+            value={totalSelectedWeight > 200 ? "1" : "0"}
+          />
           <div className="space-y-4">
             {cartItems.map(
               (
@@ -293,13 +297,13 @@ export default function CheckoutComponent({
                         <button
                           type="button"
                           onClick={() => handleQuantityChange(1, idx)}
-                          disabled={
-                            (() => {
-                              const product = cartItems[idx]?.product;
-                              const max = product ? Number(product.quantityOnHand) : Infinity;
-                              return (quantities[idx] || 0) >= max;
-                            })()
-                          }
+                          disabled={(() => {
+                            const product = cartItems[idx]?.product;
+                            const max = product
+                              ? Number(product.quantityOnHand)
+                              : Infinity;
+                            return (quantities[idx] || 0) >= max;
+                          })()}
                           className="w-8 h-8 rounded-full border border-gray-300 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
                         >
                           +
@@ -507,13 +511,16 @@ export default function CheckoutComponent({
                 <span className="text-lg font-bold text-gray-900">
                   ${" "}
                   {(() => {
-                    const totalWeight = selectedItemsData.reduce((total, item) => {
-                      const weight = item?.product?.weightPerUnit
-                        ? Number(item.product.weightPerUnit)
-                        : 0;
-                      const quantity = quantities[item.idx] || 0;
-                      return total + weight * quantity;
-                    }, 0);
+                    const totalWeight = selectedItemsData.reduce(
+                      (total, item) => {
+                        const weight = item?.product?.weightPerUnit
+                          ? Number(item.product.weightPerUnit)
+                          : 0;
+                        const quantity = quantities[item.idx] || 0;
+                        return total + weight * quantity;
+                      },
+                      0
+                    );
                     const fee = totalWeight > 20 ? 10 : 0;
                     return fee.toFixed(2);
                   })()}
@@ -527,20 +534,26 @@ export default function CheckoutComponent({
                 <span className="text-lg font-bold text-gray-900">
                   ${" "}
                   {(() => {
-                    const itemsTotal = selectedItemsData.reduce((total, item) => {
-                      const cost = item?.product?.pricePerUnit
-                        ? Number(item.product.pricePerUnit)
-                        : 0;
-                      const quantity = quantities[item.idx] || 0;
-                      return total + cost * quantity;
-                    }, 0);
-                    const totalWeight = selectedItemsData.reduce((total, item) => {
-                      const weight = item?.product?.weightPerUnit
-                        ? Number(item.product.weightPerUnit)
-                        : 0;
-                      const quantity = quantities[item.idx] || 0;
-                      return total + weight * quantity;
-                    }, 0);
+                    const itemsTotal = selectedItemsData.reduce(
+                      (total, item) => {
+                        const cost = item?.product?.pricePerUnit
+                          ? Number(item.product.pricePerUnit)
+                          : 0;
+                        const quantity = quantities[item.idx] || 0;
+                        return total + cost * quantity;
+                      },
+                      0
+                    );
+                    const totalWeight = selectedItemsData.reduce(
+                      (total, item) => {
+                        const weight = item?.product?.weightPerUnit
+                          ? Number(item.product.weightPerUnit)
+                          : 0;
+                        const quantity = quantities[item.idx] || 0;
+                        return total + weight * quantity;
+                      },
+                      0
+                    );
                     const fee = totalWeight > 20 ? 10 : 0;
                     return (itemsTotal + fee).toFixed(2);
                   })()}
@@ -557,7 +570,9 @@ export default function CheckoutComponent({
                 <button
                   type="submit"
                   disabled={
-                    checkoutPending || selectedItems.size === 0 || totalSelectedWeight > 200
+                    checkoutPending ||
+                    selectedItems.size === 0 ||
+                    totalSelectedWeight > 200
                   }
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50"
                 >
