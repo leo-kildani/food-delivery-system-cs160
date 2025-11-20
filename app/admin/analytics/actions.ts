@@ -35,20 +35,30 @@ export async function getRecentOrders(): Promise<RecentOrder[]> {
         gte: new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
       },
     },
-  });
-  const packaged_orders = orders.map(async (order) => {
-    const orderItems = await prisma.orderItem.findMany({
-      where: {
-        orderId: order.id,
+    include: {
+      orderItems: {
+        select: {
+          weightPerUnit: true,
+          quantity: true,
+        },
       },
-    });
-    // Calculate total price and weight if needed
-    const items = await orderItems;
-    let totalWeight: number = 0;
-    items.forEach((item) => {
-      totalWeight += item.weightPerUnit.toNumber() * item.quantity;
-    });
-    return { order, totalWeight };
+    },
+    orderBy: [
+      {
+        status: "asc",
+      },
+      {
+        createdAt: "asc",
+      },
+    ],
+  });
+  const packaged_orders = orders.map((order) => {
+    const orderWeight = order.orderItems.reduce((orderItemSum, orderItem) => {
+      return (
+        orderItemSum + orderItem.weightPerUnit.toNumber() * orderItem.quantity
+      );
+    }, 0);
+    return { order, totalWeight: orderWeight };
   });
   return Promise.all(packaged_orders);
 }
