@@ -1,7 +1,7 @@
 "use client"
 import { useActionState, useEffect, useState, useRef } from "react";
 import { getCartItems, checkoutAction, CheckoutState, getAddresses } from "./actions"
-
+import { Button } from "@/components/ui/button";
 
 type CartItemWithProduct = {
   product: {
@@ -56,6 +56,22 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
     }
     setSelectedItems(newSelected); //updating the setSelectedItems state
   }
+
+  // Select ALL Functions
+  const handleSelectAll = () => {
+    const allIndices = cartItems
+      .map((_, idx) => idx)
+      .filter(idx => cartItems[idx].product !== null);
+    setSelectedItems(new Set(allIndices));
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedItems(new Set());
+  }
+
+   const allSelected = cartItems.length > 0 && 
+    cartItems.filter(item => item.product !== null).every((_, idx) => selectedItems.has(idx));
+
   const selectedItemsData = cartItems.map((item, idx) => (
     {
       ...item, idx, quantity: item.quantity || 0
@@ -116,6 +132,25 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
               }))
             )}
           />
+          
+          {/* Select All button */}
+          {cartItems.length > 0 && (
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={allSelected ? handleDeselectAll : handleSelectAll}
+                >
+                  {allSelected ? "Deselect All" : "Select All"}
+                </Button>
+                <span className="text-sm text-gray-600">
+                  {selectedItems.size} of {cartItems.filter(item => item.product !== null).length} selected
+                </span>
+              </div>
+            </div>
+          )}
+
           <input
             type="hidden"
             name="selectedAddressId"
@@ -404,9 +439,9 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
+                  onClick={() => window.location.href = '/home'}
                   className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                >
-                  Continue Shopping
+                >Continue Shopping
                 </button>
                 <button
                   type="submit"

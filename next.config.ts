@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
+      //ALL Image Configurations
       // Pexels
       {
         protocol: "https",
@@ -20,6 +21,25 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: 'https',
+        hostname: 'simmerandsage.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'plus.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.gourmetfoodstore.com',
+        port: '',
+        pathname: '/**',
+      },
+
     ],
   },
 };
