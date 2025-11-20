@@ -1,3 +1,5 @@
+"use server";
+
 import { $Enums } from "@prisma/client";
 import { ReactNode } from "react";
 import {
@@ -23,7 +25,9 @@ interface OrdersTableProps {
   orderList: RecentOrder[];
 }
 
-export function OrdersTable({ orderList }: OrdersTableProps): ReactNode {
+export async function OrdersTable({
+  orderList,
+}: OrdersTableProps): Promise<ReactNode> {
   function getStatusColor(status: string): string {
     switch (status) {
       case "PENDING":
