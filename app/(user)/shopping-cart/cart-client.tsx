@@ -30,11 +30,14 @@ export default function ShoppingCartClient({
     (cartItemId: number, newQuantity: number) => {
       if (newQuantity < 1) return;
 
-      // Update local state only
+      // Clamp to product's quantityOnHand
       setCartItems((prev) =>
-        prev.map((item) =>
-          item.id === cartItemId ? { ...item, quantity: newQuantity } : item
-        )
+        prev.map((item) => {
+          if (item.id !== cartItemId) return item;
+          const max = item.product ? Number(item.product.quantityOnHand) : Infinity;
+          const clamped = Math.min(max, newQuantity);
+          return { ...item, quantity: clamped };
+        })
       );
 
       // Track that this item has been modified
@@ -107,9 +110,13 @@ export default function ShoppingCartClient({
   // 2 decimal places for totalWeight
   let totalCartWeight2Digits = totalCartWeight.toFixed(2);
 
-  // Calculate delievery Fee
+  // Calculate delivery fee and overweight condition
   let deliveryFee = 0;
-  if (totalCartWeight > 20 ) { deliveryFee = 10; totalCartCost += 10; }
+  if (totalCartWeight > 20) {
+    deliveryFee = 10;
+    totalCartCost += 10;
+  }
+  const overweight = totalCartWeight > 200;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -197,9 +204,7 @@ export default function ShoppingCartClient({
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8"
-                                disabled={
-                                  cartItem.quantity <= 1 || isActionPending
-                                }
+                                disabled={cartItem.quantity <= 1 || isActionPending}
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
@@ -218,7 +223,13 @@ export default function ShoppingCartClient({
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8"
-                                disabled={isActionPending}
+                                disabled={
+                                  isActionPending ||
+                                  cartItem.quantity >=
+                                    (cartItem.product
+                                      ? Number(cartItem.product.quantityOnHand)
+                                      : Infinity)
+                                }
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
@@ -244,6 +255,9 @@ export default function ShoppingCartClient({
                                 )}
                               </Button>
                             )}
+                            <div className="text-xs text-gray-500">
+                              {`Only ${cartItem.product.quantityOnHand} in stock`}
+                            </div>
                           </div>
                         </div>
 
@@ -292,11 +306,19 @@ export default function ShoppingCartClient({
                   </p>
                 </div>
               )}
+              {overweight && (
+                <div className="mt-4 rounded-md bg-red-50 border border-red-200 p-3">
+                  <p className="text-sm text-red-700">
+                    Cart exceeds the maximum allowed weight of 200 lbs and you
+                    cannot proceed to checkout. Please remove some items.
+                  </p>
+                </div>
+              )}
               <div className="mt-6">
                 <Button
                   asChild
                   className="w-full"
-                  disabled={isPending || modifiedQuantities.size > 0}
+                  disabled={isPending || modifiedQuantities.size > 0 || overweight}
                 >
                   <Link href="/checkout">Proceed to Checkout</Link>
                 </Button>
