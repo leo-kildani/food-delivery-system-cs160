@@ -3,6 +3,10 @@
 import prisma from "@/lib/prisma";
 import { Order, Vehicle } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { Worker } from "worker_threads";
+import { redirect } from "next/navigation";
+import fs from "fs";
+import path from "path";
 
 export type DeployState = {
   success?: boolean;
@@ -132,22 +136,197 @@ export async function getPendingOrders(): Promise<PendingOrder[]> {
     where: {
       status: "PENDING",
     },
+    include: {
+      orderItems: true,
+    }
   });
-  const packaged_orders = orders.map(async (order) => {
-    const orderItems = await prisma.orderItem.findMany({
-      where: {
-        orderId: order.id,
-      },
-    });
-    // Calculate total price and weight if needed
-    const items = await orderItems;
-    let totalPrice: number = 0;
-    let totalWeight: number = 0;
+
+  return orders.map((order) => {
+    let totalPrice = 0;
+    let totalWeight = 0;
+
+    const items = order.orderItems.map((item) => ({
+      ...item,
+      // convert Prisma Decimal -> number
+      pricePerUnit: item.pricePerUnit.toNumber(),
+      weightPerUnit: item.weightPerUnit.toNumber(),
+    }));
+
     items.forEach((item) => {
-      totalPrice += item.pricePerUnit.toNumber() * item.quantity;
-      totalWeight += item.weightPerUnit.toNumber() * item.quantity;
+      totalPrice += item.pricePerUnit * item.quantity;
+      totalWeight += item.weightPerUnit * item.quantity;
     });
-    return { order, totalPrice, totalWeight };
+
+    return {
+      order: {
+        ...order,
+        // attach converted items for further UI use if needed
+        orderItems: items,
+      } as any,
+      totalPrice,
+      totalWeight,
+    };
   });
-  return Promise.all(packaged_orders);
+}
+
+// Module-level worker registry to avoid duplicate workers per vehicle
+const vehicleWorkers: Map<number, Worker> = new Map();
+
+export async function scheduleVehicleCompletion(
+  vehicleId: number,
+  orderIds: number[]
+): Promise<{ success: boolean; updatedCount?: number; error?: string }> {
+  try {
+    // Use a transaction: first deduct product quantities, then mark orders COMPLETE,
+    // clear their VehicleId, and set vehicle to STANDBY
+    const res = await prisma.$transaction(async (tx) => {
+      // 1) collect order items for these orders
+      const items = await tx.orderItem.findMany({
+        where: { orderId: { in: orderIds } },
+      });
+
+      // accumulate totals per productId
+      const perProduct: Record<number, number> = {};
+      items.forEach((it) => {
+        perProduct[it.productId] = (perProduct[it.productId] || 0) + it.quantity;
+      });
+
+      // 2) update each product's quantityOnHand (clamp to >= 0)
+      for (const [prodIdStr, qty] of Object.entries(perProduct)) {
+        const prodId = Number(prodIdStr);
+        const product = await tx.product.findUnique({ where: { id: prodId } });
+        if (!product) continue;
+        const current = product.quantityOnHand;
+        const newQty = Math.max(0, current - qty);
+        await tx.product.update({ where: { id: prodId }, data: { quantityOnHand: newQty } });
+      }
+
+      // 3) mark orders COMPLETE and clear VehicleId
+      const updated = await tx.order.updateMany({
+        where: { id: { in: orderIds }, VehicleId: vehicleId },
+        data: { status: "COMPLETE", VehicleId: null },
+      });
+
+      // 4) set vehicle back to STANDBY
+      const updatedVehicle = await tx.vehicle.update({
+        where: { id: vehicleId },
+        data: { status: "STANDBY" },
+      });
+
+      return { updatedCount: updated.count, vehicle: updatedVehicle };
+    });
+
+    console.log(
+      `Marked ${res.updatedCount} orders COMPLETE, deducted product stock and set vehicle ${vehicleId} to STANDBY`
+    );
+
+    return { success: true, updatedCount: res.updatedCount };
+  } catch (e) {
+    console.error("scheduleVehicleCompletion error:", e);
+    return { success: false, error: String(e) };
+  }
+}
+
+export async function startVehicleWorker(
+  vehicleId: number,
+  orderIds: number[],
+  etaMinutes: number
+): Promise<{ success: boolean; started?: boolean; error?: string }> {
+  try {
+    // Clear existing worker if present (replace with new ETA)
+    const existing = vehicleWorkers.get(vehicleId);
+    if (existing) {
+      try {
+        existing.terminate();
+      } catch (e) {
+        console.warn("Failed terminating existing worker", e);
+      }
+      vehicleWorkers.delete(vehicleId);
+    }
+
+    const delayMs = Math.max(30_000, Math.floor((etaMinutes / 10) * 60_000));
+
+    // Resolve worker script on filesystem to avoid Turbopack/Next virtual URL issues
+    const candidate = path.join(process.cwd(), "lib", "workers", "vehicle-completion-worker.js");
+    let workerPath = candidate;
+    if (!fs.existsSync(workerPath)) {
+      // Fallback to URL import (may fail in dev with Turbopack)
+      const workerFileUrl = new URL("../../../lib/workers/vehicle-completion-worker.js", import.meta.url);
+      workerPath = workerFileUrl.href;
+      console.warn("Worker file not found on disk, falling back to URL:", workerPath);
+    }
+
+    console.log("Starting worker with path:", workerPath);
+
+    const worker = new Worker(workerPath, {
+      workerData: { vehicleId, orderIds, delayMs },
+    } as any);
+
+    worker.on("message", async (msg: any) => {
+      try {
+        console.log("Worker message received:", msg);
+        await scheduleVehicleCompletion(vehicleId, orderIds);
+      } catch (e) {
+        console.error("Error handling worker message:", e);
+      } finally {
+        vehicleWorkers.delete(vehicleId);
+        try {
+          worker.terminate();
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    });
+
+    worker.on("error", (err) => {
+      console.error("Worker error for vehicle", vehicleId, err);
+      vehicleWorkers.delete(vehicleId);
+    });
+
+    worker.on("exit", (code) => {
+      console.log("Worker exit", vehicleId, code);
+      vehicleWorkers.delete(vehicleId);
+    });
+
+    vehicleWorkers.set(vehicleId, worker);
+
+    console.log(`Started worker for vehicle ${vehicleId} (delay ${delayMs}ms)`);
+
+    return { success: true, started: true };
+  } catch (e) {
+    console.error("startVehicleWorker error:", e);
+    return { success: false, error: String(e) };
+  }
+}
+
+// Server action wrapper usable from client components (React Server Actions)
+export async function startVehicleWorkerAction(payload: {
+  vehicleId: number;
+  orderIds: number[];
+  etaMinutes: number;
+}) {
+  'use server';
+  const { vehicleId, orderIds, etaMinutes } = payload;
+  const res = await startVehicleWorker(vehicleId, orderIds, etaMinutes);
+  // Return the result to the client so the calling component can
+  // close the modal and show feedback. Avoid redirecting from here
+  // (server actions running in SSR contexts shouldn't call redirect
+  // expecting client navigation when invoked from client components).
+  return res;
+}
+
+// Server action to retrieve current statuses for a set of orders
+export async function getOrderStatuses(payload: { orderIds: number[] }) {
+  'use server';
+  const { orderIds } = payload;
+  try {
+    const orders = await prisma.order.findMany({
+      where: { id: { in: orderIds } },
+      select: { id: true, status: true },
+    });
+    return { success: true, orders };
+  } catch (e) {
+    console.error('getOrderStatuses error', e);
+    return { success: false, error: String(e) };
+  }
 }
