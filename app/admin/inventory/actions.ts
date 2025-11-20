@@ -86,6 +86,13 @@ const AddProductSchema = z.object({
     })
     .transform(Number),
   quantityOnHand: z.coerce.number().int({ error: "Must be an integer" }),
+  imageUrl: z
+    .url()
+    .regex(/.*[\.jpg|\.jpeg|\.png]/, {
+      error: "URL must end with a valid file extension (.jpg, .jpeg, .png",
+    })
+    .optional()
+    .or(z.literal("", { error: "Must be a valid URL or blank" })),
 });
 
 export type AddProductState = {
@@ -106,6 +113,7 @@ export async function addProductAction(
     pricePerUnit: formData.get("pricePerUnit"),
     weightPerUnit: formData.get("weightPerUnit"),
     quantityOnHand: formData.get("quantityOnHand"),
+    imageUrl: formData.get("imageUrl"),
   };
   //console.log(input);
 
@@ -127,6 +135,7 @@ export async function addProductAction(
         pricePerUnit: parsedData.pricePerUnit,
         weightPerUnit: parsedData.weightPerUnit,
         quantityOnHand: parsedData.quantityOnHand,
+        imageUrl: parsedData.imageUrl || null,
       },
     });
   } catch (e) {
@@ -157,6 +166,7 @@ export async function editProductAction(
     pricePerUnit: formData.get("pricePerUnit"),
     weightPerUnit: formData.get("weightPerUnit"),
     quantityOnHand: formData.get("quantityOnHand"),
+    imageUrl: formData.get("imageUrl"),
   };
   //console.log(input);
 
@@ -182,6 +192,7 @@ export async function editProductAction(
         pricePerUnit: parsedData.pricePerUnit,
         weightPerUnit: parsedData.weightPerUnit,
         quantityOnHand: parsedData.quantityOnHand,
+        imageUrl: parsedData.imageUrl || null,
       },
     });
   } catch (e) {

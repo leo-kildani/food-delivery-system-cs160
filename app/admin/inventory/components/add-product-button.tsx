@@ -28,6 +28,13 @@ export default function AddProductButton() {
     }
   }, [addProductState?.ok]);
 
+  useEffect(() => {
+    if (!open) {
+      // reset state when dialog is opened
+      addProductState.fieldErrors = {};
+    }
+  });
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -141,6 +148,20 @@ export default function AddProductButton() {
               {addProductState.fieldErrors?.quantityOnHand && (
                 <div className="text-red-600 text-sm mt-1">
                   {addProductState.fieldErrors.quantityOnHand.join(", ")}
+                </div>
+              )}
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="imageUrl">Image URL (.jpg, .jpeg, .png)</Label>
+              <Input
+                id="imageUrl"
+                name="imageUrl"
+                placeholder="https://example.com/images/my_photo.jpg"
+                type="url"
+              />
+              {addProductState.fieldErrors?.imageUrl && (
+                <div className="text-red-600 text-sm mt-1">
+                  {addProductState.fieldErrors.imageUrl.join(", ")}
                 </div>
               )}
             </div>

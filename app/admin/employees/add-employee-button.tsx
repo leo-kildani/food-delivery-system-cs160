@@ -38,7 +38,9 @@ export default function AddEmployeeButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Add Employee</Button>
+        <Button variant="outline" className="bg-blue-500 text-white">
+          Add Employee
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

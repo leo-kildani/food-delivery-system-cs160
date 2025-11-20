@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type ShoppingCartButtonProps = {
@@ -21,13 +21,7 @@ export default function ShoppingCartButton({
     return (
       <div className={`relative inline-flex ${className ?? ""}`}>
         <span className="flex items-center gap-2 pr-3 px-3 py-2 rounded-lg text-sm font-medium text-blue-300/50 cursor-not-allowed">
-          <Image
-            src="/shopping-cart.svg"
-            alt="Shopping cart icon"
-            width={22}
-            height={22}
-            className="opacity-50"
-          />
+          <ShoppingCart className="inline-block mr-1" size={22} />
           <span className="font-medium">Shopping Cart</span>
         </span>
       </div>
@@ -36,15 +30,10 @@ export default function ShoppingCartButton({
 
   // For logged-in users, render as an interactive button
   return (
-    <div className={`relative inline-flex ${className ?? ""}`}>
+    <div className={`relative inline-flex ${className ?? ""} text-slate-300`}>
       <Button asChild variant="ghost" className="flex items-center gap-2 pr-3">
         <Link href="/shopping-cart" aria-label="Go to shopping cart">
-          <Image
-            src="/shopping-cart.svg"
-            alt="Shopping cart icon"
-            width={22}
-            height={22}
-          />
+          <ShoppingCart className="inline-block mr-1" size={22} />
           <span className="font-medium">Shopping Cart</span>
         </Link>
       </Button>

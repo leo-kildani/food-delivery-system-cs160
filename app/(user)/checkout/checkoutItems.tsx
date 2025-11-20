@@ -1,6 +1,11 @@
-"use client"
+"use client";
 import { useActionState, useEffect, useState, useRef } from "react";
-import { getCartItems, checkoutAction, CheckoutState, getAddresses } from "./actions"
+import {
+  getCartItems,
+  checkoutAction,
+  CheckoutState,
+  getAddresses,
+} from "./actions";
 import { Button } from "@/components/ui/button";
 
 type CartItemWithProduct = {
@@ -26,13 +31,23 @@ type CheckoutClientProps = {
   initialCartItems: CartItemWithProduct[];
   initialAddresses: DeliveryAddress[];
 };
-export default function CheckoutComponent({initialCartItems, initialAddresses}: CheckoutClientProps) {
+export default function CheckoutComponent({
+  initialCartItems,
+  initialAddresses,
+}: CheckoutClientProps) {
   const [checkoutState, checkoutFormAction, checkoutPending] = useActionState(
     checkoutAction,
     {} as CheckoutState
   );
-  const [cartItems, setCartItems] = useState<CartItemWithProduct[]>(initialCartItems); // cart data retrieved from database
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set()); // set of indices that are selected
+  const [cartItems, setCartItems] =
+    useState<CartItemWithProduct[]>(initialCartItems); // cart data retrieved from database
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(
+    new Set(
+      cartItems // preselect all items with valid products
+        .map((_, idx) => idx)
+        .filter((idx) => cartItems[idx].product !== null)
+    )
+  ); // set of indices that are selected
   const [quantities, setQuantities] = useState<Record<number, number>>(
     initialCartItems.reduce((acc, item, idx) => {
       acc[idx] = item.quantity;
@@ -40,7 +55,8 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
     }, {} as Record<number, number>)
   );
   const [loading, setLoading] = useState(true);
-  const [addresses, setAddresses] = useState<DeliveryAddress[]>(initialAddresses);
+  const [addresses, setAddresses] =
+    useState<DeliveryAddress[]>(initialAddresses);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     initialAddresses[0]?.id || null
   );
@@ -55,63 +71,73 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
       newSelected.delete(idx);
     }
     setSelectedItems(newSelected); //updating the setSelectedItems state
-  }
+  };
 
   // Select ALL Functions
   const handleSelectAll = () => {
     const allIndices = cartItems
       .map((_, idx) => idx)
-      .filter(idx => cartItems[idx].product !== null);
+      .filter((idx) => cartItems[idx].product !== null);
     setSelectedItems(new Set(allIndices));
-  }
+  };
 
   const handleDeselectAll = () => {
     setSelectedItems(new Set());
-  }
+  };
 
-   const allSelected = cartItems.length > 0 && 
-    cartItems.filter(item => item.product !== null).every((_, idx) => selectedItems.has(idx));
+  const allSelected =
+    cartItems.length > 0 &&
+    cartItems
+      .filter((item) => item.product !== null)
+      .every((_, idx) => selectedItems.has(idx));
 
-  const selectedItemsData = cartItems.map((item, idx) => (
-    {
-      ...item, idx, quantity: item.quantity || 0
-    }
-  )).filter((item, idx) => selectedItems.has(idx) && item.quantity > 0);
+  const selectedItemsData = cartItems
+    .map((item, idx) => ({
+      ...item,
+      idx,
+      quantity: item.quantity || 0,
+    }))
+    .filter((item, idx) => selectedItems.has(idx) && item.quantity > 0);
 
   // calculate only the selected items price and weighht
 
   const handleQuantityChange = (change: number, idx: number) => {
-    setQuantities(prev => ({
+    setQuantities((prev) => ({
       ...prev,
-      [idx]: Math.max(0, prev[idx] + change)
+      [idx]: Math.max(0, prev[idx] + change),
     }));
-    console.log(quantities)
-  }
+    console.log(quantities);
+  };
 
   const handleAddressSelect = (addressId: number) => {
     setSelectedAddressId(addressId);
     setIsAddressDropdownOpen(false);
-  }
+  };
 
-  const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+  const selectedAddress = addresses.find(
+    (addr) => addr.id === selectedAddressId
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsAddressDropdownOpen(false);
       }
     };
 
     if (isAddressDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isAddressDropdownOpen]);
-  
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-sm">
@@ -132,7 +158,7 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
               }))
             )}
           />
-          
+
           {/* Select All button */}
           {cartItems.length > 0 && (
             <div className="flex items-center justify-between mb-4">
@@ -145,7 +171,9 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
                   {allSelected ? "Deselect All" : "Select All"}
                 </Button>
                 <span className="text-sm text-gray-600">
-                  {selectedItems.size} of {cartItems.filter(item => item.product !== null).length} selected
+                  {selectedItems.size} of{" "}
+                  {cartItems.filter((item) => item.product !== null).length}{" "}
+                  selected
                 </span>
               </div>
             </div>
@@ -232,7 +260,7 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
                           {item.product.weightPerUnit?.toNumber
                             ? item.product.weightPerUnit.toNumber()
                             : item.product.weightPerUnit}
-                          g
+                          {" lb"}
                         </span>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {item.product.category}
@@ -439,9 +467,10 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
-                  onClick={() => window.location.href = '/home'}
+                  onClick={() => (window.location.href = "/home")}
                   className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                >Continue Shopping
+                >
+                  Continue Shopping
                 </button>
                 <button
                   type="submit"

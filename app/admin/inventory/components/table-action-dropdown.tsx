@@ -223,6 +223,22 @@ export default function TableActionDropdown(prop: TableActionProp) {
                   </div>
                 )}
               </div>
+
+              {/* Image URL */}
+              <div className="grid gap-3">
+                <Label htmlFor="imageUrl">Image URL</Label>
+                <Input
+                  id="imageUrl"
+                  name="imageUrl"
+                  defaultValue={productRow.imageUrl ?? ""}
+                  type="url"
+                />
+                {editProductState.fieldErrors?.imageUrl && (
+                  <div className="text-red-600 text-sm mt-1">
+                    {editProductState.fieldErrors.imageUrl.join(", ")}
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <DialogClose asChild>

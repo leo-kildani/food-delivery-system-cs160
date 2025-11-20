@@ -16,6 +16,7 @@ type ProductProp = {
   weightPerUnit: number;
   quantityOnHand: number;
   status: $Enums.ProductStatus;
+  imageUrl: string | null;
 };
 
 export default function AdminInventoryClient({
@@ -32,6 +33,10 @@ export default function AdminInventoryClient({
 
   return (
     <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Inventory Management</h1>
+        <AddProductButton />
+      </div>
       <div className="flex justify-end gap-x-5">
         <div className="flex items-center space-x-2">
           <Switch
@@ -40,7 +45,6 @@ export default function AdminInventoryClient({
             id="show-inactive"
           />
           <label htmlFor="show-inactive">Show Archived</label>
-          <AddProductButton />
         </div>
       </div>
       <div className="py-3">
