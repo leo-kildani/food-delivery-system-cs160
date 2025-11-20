@@ -5,7 +5,7 @@ import { Product, ProductStatus } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { getCartItems } from "../checkout/actions";
 import { revalidatePath } from "next/cache";
-import { OpenAI } from "openai";
+import OpenAI from "openai";
 
 async function getUserId() {
   const supabase = await createClient();
@@ -104,10 +104,6 @@ export interface CartItem {
 }
 
 // --- CHATBOT AI ---
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -122,6 +118,10 @@ export async function sendChatMessage(messages: ChatMessage[]) {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error("OpenAI API key not configured");
     }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     // Use the existing getActiveProducts function
     const products = await getActiveProducts();

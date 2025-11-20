@@ -1,6 +1,7 @@
 "use client"
-import { useActionState, useEffect, useState, useRef } from "react";
-import { getCartItems, checkoutAction, CheckoutState, getAddresses } from "./actions"
+import { useEffect, useState, useRef } from "react";
+import { getCartItems, getAddresses } from "./actions"
+import { useRouter } from "next/navigation";
 
 
 type CartItemWithProduct = {
@@ -27,10 +28,9 @@ type CheckoutClientProps = {
   initialAddresses: DeliveryAddress[];
 };
 export default function CheckoutComponent({initialCartItems, initialAddresses}: CheckoutClientProps) {
-  const [checkoutState, checkoutFormAction, checkoutPending] = useActionState(
-    checkoutAction,
-    {} as CheckoutState
-  );
+  const router = useRouter();
+  const [checkoutPending, setCheckoutPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>(initialCartItems); // cart data retrieved from database
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set()); // set of indices that are selected
   const [quantities, setQuantities] = useState<Record<number, number>>(
@@ -79,6 +79,61 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
 
   const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
 
+  const handleCheckout = async () => {
+    if (selectedItems.size === 0) {
+      setError("Please select at least one item");
+      return;
+    }
+
+    if (!selectedAddressId) {
+      setError("Please select a delivery address");
+      return;
+    }
+
+    setCheckoutPending(true);
+    setError(null);
+
+    try {
+      // Prepare selected items with product details
+      const itemsWithDetails = selectedItemsData.map((item) => ({
+        productId: item.product?.id,
+        productName: item.product?.name,
+        description: item.product?.description,
+        quantity: quantities[item.idx],
+        pricePerUnit: Number(item.product?.pricePerUnit ?? 0),
+        weightPerUnit: Number(item.product?.weightPerUnit ?? 0),
+      }));
+
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          selectedItems: itemsWithDetails,
+          selectedAddressId: selectedAddressId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create checkout session");
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL received");
+      }
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      setError(err.message || "Failed to process checkout");
+      setCheckoutPending(false);
+    }
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -103,24 +158,7 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
           <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
         </div>
 
-        <form action={checkoutFormAction} className="p-6">
-          <input
-            type="hidden"
-            name="selectedItems"
-            value={JSON.stringify(
-              selectedItemsData.map((item) => ({
-                productId: item.product?.id,
-                quantity: quantities[item.idx],
-                pricePerUnit: Number(item.product?.pricePerUnit ?? 0),
-                weightPerUnit: Number(item.product?.weightPerUnit ?? 0),
-              }))
-            )}
-          />
-          <input
-            type="hidden"
-            name="selectedAddressId"
-            value={selectedAddressId || ""}
-          />
+        <div className="p-6">
           <div className="space-y-4">
             {cartItems.map(
               (
@@ -401,21 +439,28 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
                     .toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-end space-x-4">
+              {error && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+              <div className="flex justify-end space-x-4 mt-4">
                 <button
                   type="button"
+                  onClick={() => router.push("/home")}
                   className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
                 >
                   Continue Shopping
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleCheckout}
                   disabled={checkoutPending || selectedItems.size === 0}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50"
                 >
                   {checkoutPending
-                    ? "Processing..."
-                    : `Buy ${selectedItems.size} Item(s)`}
+                    ? "Redirecting to payment..."
+                    : `Proceed to Payment (${selectedItems.size} Item${selectedItems.size !== 1 ? 's' : ''})`}
                 </button>
               </div>
             </div>
@@ -443,7 +488,7 @@ export default function CheckoutComponent({initialCartItems, initialAddresses}: 
               <p className="text-gray-600">Add some items to get started!</p>
             </div>
           )}
-        </form>
+        </div>
       </div>
     </div>
   );
