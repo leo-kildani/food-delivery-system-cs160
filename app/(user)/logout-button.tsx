@@ -15,7 +15,7 @@ export default function LogoutButton() {
       <Button 
         disabled={logoutIsPending}
         variant="outline"
-        className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/40 transition-all duration-200"
+        className="cursor-pointer bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/40 transition-all duration-200"
       >
         {logoutIsPending ? "Logging Out..." : "Log Out"}
       </Button>

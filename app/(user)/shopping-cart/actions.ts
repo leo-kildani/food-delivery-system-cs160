@@ -68,6 +68,7 @@ export async function removeCartItem(cartId: number) {
   });
 
   revalidatePath("/shopping-cart");
+  revalidatePath("/layout.tsx");
 }
 
 export async function updateCartItemQuantity(
