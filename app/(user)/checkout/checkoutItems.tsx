@@ -1,11 +1,6 @@
 "use client";
 import { useActionState, useEffect, useState, useRef } from "react";
-import {
-  getCartItems,
-  checkoutAction,
-  CheckoutState,
-  getAddresses,
-} from "./actions";
+import { getCartItems, checkoutAction, CheckoutState, getAddresses, } from "./actions";
 import { Button } from "@/components/ui/button";
 
 type CartItemWithProduct = {
@@ -54,7 +49,6 @@ export default function CheckoutComponent({
       return acc;
     }, {} as Record<number, number>)
   );
-  const [loading, setLoading] = useState(true);
   const [addresses, setAddresses] =
     useState<DeliveryAddress[]>(initialAddresses);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(

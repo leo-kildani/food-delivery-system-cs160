@@ -3,7 +3,6 @@
 import prisma from "@/lib/prisma";
 import { Product, ProductStatus } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
-import { getCartItems } from "../checkout/actions";
 import { revalidatePath } from "next/cache";
 import { OpenAI } from "openai";
 
@@ -34,26 +33,39 @@ export async function getActiveProducts(): Promise<Product[]> {
 }
 
 export async function getSerializedProducts(): Promise<SerializedProduct[]> {
-  const products = await prisma.product.findMany({
-    where: { status: ProductStatus.ACTIVE },
-  });
+  try {
+    const products = await prisma.product.findMany({
+      where: { status: ProductStatus.ACTIVE },
+    });
 
-  return products.map((p) => ({
-    ...p,
-    pricePerUnit: p.pricePerUnit.toNumber(),
-    weightPerUnit: p.weightPerUnit.toNumber(),
-  }));
+    return products.map((p) => ({
+      ...p,
+      pricePerUnit: p.pricePerUnit.toNumber(),
+      weightPerUnit: p.weightPerUnit.toNumber(),
+    }));
+  } catch (error) {
+    console.error('Failed to fetch serialized products:', error);
+    return [];
+  }
 }
 
 export async function getCartId(): Promise<number> {
-  let userId = await getUserId();
-  let cart = await prisma.cart.findUnique({ where: { userId: userId } });
-  if (cart == null) {
-    return -1; // should never happen due to database constraint
-  } else {
+  try {
+    const userId = await getUserId();
+    const cart = await prisma.cart.findUnique({ where: { userId } });
+    
+    if (cart == null) {
+      console.warn('No cart found for user:', userId);
+      return -1;
+    }
+    
     return cart.id;
+  } catch (error) {
+    console.error('Failed to fetch cart ID:', error);
+    return -1;
   }
 }
+
 export type AddToCartState = {
   success?: boolean;
   error?: string;
