@@ -24,9 +24,7 @@ export type SerializedCartItem = CartItem & {
   };
 };
 
-export async function getUserCart(
-  userId: string
-): Promise<CartWithItemsAndProduct> {
+export async function getUserCart( userId: string): Promise<CartWithItemsAndProduct> {
   // First, ensure the user exists in the database
   let user = await prisma.user.findUnique({
     where: { authId: userId },

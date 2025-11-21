@@ -12,6 +12,8 @@ export default async function UserLayout({
   const user = await getLoggedInUser();
   // Guest users (not logged in) can only access the home page
   const isGuest = !user;
+  
+  //Shopping Cart Item Count in Corner
   const cartItems = getCartItems();
   const cartItemCount = (await cartItems).length;
 
