@@ -34,9 +34,10 @@ export default function VehicleRouteModal({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
   const fetchedRef = useRef(false);
-  const [eta, setEta] = useState(-1);
-  const [optimizedOrders, setOptimizedOrders] = useState(orders);
-
+  const [eta, setEta] = useState<number>(-1);
+  const [optimizedOrders, setOptimizedOrders] = useState<
+    Array<{ id: number; address: string; status: string; etaMinutes?: number }>
+  >([]);
   // Initialize Google Maps API options once
   useEffect(() => {
     if (!mapInit.current) {
@@ -136,11 +137,6 @@ export default function VehicleRouteModal({
 
           // Call computeRoutes to get the directions.
           const result = await Route.computeRoutes(request);
-          console.log("Route result:", result);
-          console.log(
-            "Optimized indices:",
-            result.routes?.[0]?.optimizedIntermediateWaypointIndices
-          );
 
           // Check if result and routes exist
           if (!result || !result.routes || result.routes.length === 0) {
@@ -150,14 +146,45 @@ export default function VehicleRouteModal({
 
           const route = result.routes[0];
 
-          // Reorder orders based on optimized route
-          if (route.optimizedIntermediateWaypointIndices) {
+          // Reorder orders based on optimized route and compute ETA for each order
+          if (route.optimizedIntermediateWaypointIndices && route.legs) {
             const optimizedIndices = route.optimizedIntermediateWaypointIndices;
+            let cumulativeDurationMs = 0;
+            const orderETAs: Array<{ orderId: number; etaMinutes: number }> =
+              [];
+
             const reorderedOrders = optimizedIndices.map(
-              (originalIndex: number) => orders[originalIndex]
+              (originalIndex: number, i: number) => {
+                const order = orders[originalIndex];
+                const leg = route.legs[i];
+
+                cumulativeDurationMs += leg.durationMillis || 0;
+                const etaMinutes = Math.round(cumulativeDurationMs / 60000);
+
+                orderETAs.push({ orderId: order.id, etaMinutes });
+
+                return {
+                  ...order,
+                  etaMinutes,
+                };
+              }
             );
             setOptimizedOrders(reorderedOrders);
-            console.log("Reordered orders:", reorderedOrders);
+
+            // Use fetch to call the API route
+            fetch("/api/orders/update-etas", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderETAs }),
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  console.error("Failed to save ETAs");
+                }
+              })
+              .catch((err) => {
+                console.error("Error saving ETAs:", err);
+              });
           }
 
           // Ensure the 'legs' field is requested in your ComputeRoutesRequest
@@ -285,6 +312,19 @@ export default function VehicleRouteModal({
                           <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                           <span className="break-words">{order.address}</span>
                         </div>
+                        {order.etaMinutes !== undefined && (
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                            <Clock className="h-4 w-4 flex-shrink-0" />
+                            <span>
+                              ETA:{" "}
+                              {order.etaMinutes >= 60
+                                ? `${Math.floor(order.etaMinutes / 60)}h ${
+                                    order.etaMinutes % 60
+                                  }m`
+                                : `${order.etaMinutes} min`}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

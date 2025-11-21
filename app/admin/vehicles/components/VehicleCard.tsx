@@ -35,6 +35,7 @@ export function VehicleCard({
     async (prevState: DeployState, formData: FormData) => {
       const newState = await deployVehicleAction(prevState, formData);
       changeDeployState(newState);
+      if (newState.success) setIsModalOpen(true);
       return newState;
     },
     {} as DeployState

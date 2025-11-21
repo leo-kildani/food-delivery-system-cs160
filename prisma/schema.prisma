@@ -110,6 +110,7 @@ model Order {
   stripePaymentId   String?
   paymentStatus     String?     @default("pending")
   totalAmount       Decimal?    @db.Decimal(10, 2)
+  eta               Int?
 
   @@index([userId])
   @@index([VehicleId])
