@@ -15,7 +15,7 @@ export default async function AdminLayout({
   return (
     <div>
       <nav className="bg-gradient-to-r from-cyan-600 to-cyan-700 shadow-lg border-b border-cyan-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo Section */}
             <div className="flex items-center space-x-4">
@@ -65,13 +65,15 @@ export default async function AdminLayout({
               >
                 Orders
               </Link>
-              <Link
-                href="/home"
-                className="text-slate-300 hover:text-cyan-100 px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-white/10"
-              >
-                <House className="inline-block mr-1 mb-1" size={19} />
-                <span className="text-sm font-medium">Home</span>
-              </Link>
+              <div className="pr-9">
+                <Link
+                  href="/home"
+                  className="text-slate-300 hover:text-cyan-100 px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-white/10"
+                >
+                  <House className="inline-block mr-1 mb-1" size={19} />
+                  <span className="text-sm font-medium">Home</span>
+                </Link>
+              </div>
               <LogoutButton></LogoutButton>
             </div>
           </div>
