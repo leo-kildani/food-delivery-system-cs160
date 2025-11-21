@@ -24,11 +24,7 @@ export default function VehicleOrderList({
     [key: number]: number[];
   }>({}); // vehicleId -> orderIds[]
 
-  // Deploy action state
-  const [deployState, deployAction, isDeploying] = useActionState(
-    deployVehicleAction,
-    {} as DeployState
-  );
+  const [deployVehicleState, setDeployVehicleState] = useState<DeployState>({});
 
   console.log(assignedOrders);
 
@@ -86,16 +82,17 @@ export default function VehicleOrderList({
                 tempVehicleWeight={tempVehicleWeight}
                 tempAssignedOrderCount={tempAssignedOrderCount}
                 assignedOrders={assignedOrders[vehicle.id] || []}
-                isDeploying={isDeploying}
                 onSelect={() => setSelectedVehicle(vehicle.id)}
-                deployAction={deployAction}
+                changeDeployState={(state: DeployState) =>
+                  setDeployVehicleState(state)
+                }
               />
             );
           })}
         </div>
       </div>
 
-      <DeployFeedback deployState={deployState} />
+      <DeployFeedback deployState={deployVehicleState} />
       {selectedVehicle > 0 && (
         <div className="space-y-6">
           <Separator />
