@@ -132,22 +132,27 @@ export async function getPendingOrders(): Promise<PendingOrder[]> {
     where: {
       status: "PENDING",
     },
+    include: {
+      orderItems: {
+        select: {
+          weightPerUnit: true,
+          pricePerUnit: true,
+          quantity: true,
+        },
+      },
+    },
   });
   const packaged_orders = orders.map(async (order) => {
-    const orderItems = await prisma.orderItem.findMany({
-      where: {
-        orderId: order.id,
-      },
-    });
     // Calculate total price and weight if needed
-    const items = await orderItems;
-    let totalPrice: number = 0;
-    let totalWeight: number = 0;
-    items.forEach((item) => {
-      totalPrice += item.pricePerUnit.toNumber() * item.quantity;
-      totalWeight += item.weightPerUnit.toNumber() * item.quantity;
-    });
-    return { order, totalPrice, totalWeight };
+    const totalPrice: number = order.orderItems.reduce((sum, item) => {
+      return sum + item.pricePerUnit.toNumber() * item.quantity;
+    }, 0);
+    const totalWeight: number = order.orderItems.reduce((sum, item) => {
+      return sum + item.weightPerUnit.toNumber() * item.quantity;
+    }, 0);
+    // Destructuring to remove orderItems ("decimal objects not supported", and unnecessary)
+    const { orderItems, ...plainOrder } = order;
+    return { order: plainOrder, totalPrice, totalWeight };
   });
   return Promise.all(packaged_orders);
 }
