@@ -22,10 +22,17 @@ async function getUserId() {
 }
 
 export async function getActiveProducts(): Promise<Product[]> {
-  return await prisma.product.findMany({
-    where: { status: ProductStatus.ACTIVE },
-  });
+  try {
+    const activeProducts = await prisma.product.findMany({
+      where: { status: ProductStatus.ACTIVE },
+    });
+    return activeProducts;
+  } catch (error) {
+    console.error('Failed to fetch active products:', error);
+    return [];
+  }
 }
+
 export async function getSerializedProducts(): Promise<SerializedProduct[]> {
   const products = await prisma.product.findMany({
     where: { status: ProductStatus.ACTIVE },
