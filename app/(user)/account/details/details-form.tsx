@@ -47,8 +47,8 @@ export function DetailsForm({ user }: DetailsFormProps) {
           )}
 
           {state.ok && (
-            <Alert>
-              <AlertDescription>
+            <Alert className="bg-green-50 border-green-200 text-green-800">
+              <AlertDescription className="text-green-700">
                 Account details updated successfully!
               </AlertDescription>
             </Alert>
