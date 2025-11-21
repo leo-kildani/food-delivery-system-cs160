@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { startTransition, useMemo, useState, useTransition } from "react";
 import { CartItem, SerializedProduct } from "./actions";
 import { useDebounce } from "use-debounce";
 import Fuse from "fuse.js";
 import { ProductCard } from "./product-card";
 import { useSetSearchParam } from "@/hooks/use-set-search-param";
 import { useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 
 interface ProductSearchProps {
   products: SerializedProduct[];
@@ -24,6 +25,7 @@ export default function ProductSearchGrid({
 }: ProductSearchProps) {
   const [userQuery, setUserQuery] = useState("");
   const [debounced] = useDebounce(userQuery, 250);
+  const [isPending, startTransition] = useTransition();
 
   const searchParams = useSearchParams();
   const setSearch = useSetSearchParam();
@@ -56,20 +58,22 @@ export default function ProductSearchGrid({
   const rawPage = Number(searchParams.get("page") ?? "1");
   const requestedPage =
     Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
-  const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(raw.length / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageItems = raw.slice(start, start + PAGE_SIZE);
 
   // --- page setter using setSearchParam hook ---
   const setPage = (nextPage: number, { replace = false } = {}) => {
-    setSearch(
-      (sp) => {
-        if (nextPage <= 1) sp.delete("page");
-        else sp.set("page", String(nextPage));
-      },
-      { replace }
-    );
+    startTransition(() => {
+      setSearch(
+        (sp) => {
+          if (nextPage <= 1) sp.delete("page");
+          else sp.set("page", String(nextPage));
+        },
+        { replace }
+      );
+    });
   };
 
   // handle product search bar
@@ -82,6 +86,39 @@ export default function ProductSearchGrid({
       },
       { replace: true }
     );
+  };
+
+  // Generate page numbers with ellipsis
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    const delta = 1; // pages to show on each side of current
+
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("ellipsis");
+    }
+
+    const start = Math.max(2, currentPage - delta);
+    const end = Math.min(totalPages - 1, currentPage + delta);
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("ellipsis");
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages;
   };
 
   return (
@@ -118,24 +155,88 @@ export default function ProductSearchGrid({
         ))}
       </div>
 
-      {/* Simple pagination controls */}
+    {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center mt-6 gap-4">
-          <button
-            onClick={() => setPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
+        <nav
+          role="navigation"
+          aria-label="Pagination"
+          className="mx-auto flex w-full justify-center mt-8"
+        >
+          <ul className="flex items-center gap-1">
+            {/* Previous Button */}
+            <li>
+              <button
+                onClick={() => setPage(currentPage - 1)}
+                disabled={currentPage === 1 || isPending}
+                aria-label="Go to previous page"
+                className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium 
+                  h-9 px-3 py-2 border border-gray-200 bg-white hover:bg-gray-100 hover:text-gray-900
+                  disabled:pointer-events-none disabled:opacity-50 
+                  transition-colors duration-150 ease-in-out
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Previous</span>
+              </button>
+            </li>
+
+            {/* Page Numbers */}
+            {getPageNumbers().map((page, idx) =>
+              page === "ellipsis" ? (
+                <li key={`ellipsis-${idx}`}>
+                  <span className="flex h-9 w-9 items-center justify-center">
+                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                  </span>
+                </li>
+              ) : (
+                <li key={page}>
+                  <button
+                    onClick={() => setPage(page)}
+                    disabled={isPending}
+                    aria-label={`Go to page ${page}`}
+                    aria-current={currentPage === page ? "page" : undefined}
+                    className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium
+                      h-9 w-9 transition-colors duration-150 ease-in-out
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2
+                      ${
+                        currentPage === page
+                          ? "bg-gray-900 text-white hover:bg-gray-800 shadow-sm"
+                          : "border border-gray-200 bg-white hover:bg-gray-100 hover:text-gray-900"
+                      }
+                      disabled:pointer-events-none disabled:opacity-50`}
+                  >
+                    {page}
+                  </button>
+                </li>
+              )
+            )}
+
+            {/* Next Button */}
+            <li>
+              <button
+                onClick={() => setPage(currentPage + 1)}
+                disabled={currentPage === totalPages || isPending}
+                aria-label="Go to next page"
+                className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium 
+                  h-9 px-3 py-2 border border-gray-200 bg-white hover:bg-gray-100 hover:text-gray-900
+                  disabled:pointer-events-none disabled:opacity-50 
+                  transition-colors duration-150 ease-in-out
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </li>
+          </ul>
+        </nav>
+      )}
+
+      {/* Page indicator */}
+      {totalPages > 1 && (
+        <p className="text-center text-sm text-gray-500 mt-3">
+          Page {currentPage} of {totalPages}
+          {isPending && <span className="ml-2 animate-pulse">Loading...</span>}
+        </p>
       )}
     </div>
   );
