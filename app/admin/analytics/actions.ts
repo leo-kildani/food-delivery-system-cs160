@@ -35,20 +35,30 @@ export async function getRecentOrders(): Promise<RecentOrder[]> {
         gte: new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
       },
     },
-  });
-  const packaged_orders = orders.map(async (order) => {
-    const orderItems = await prisma.orderItem.findMany({
-      where: {
-        orderId: order.id,
+    include: {
+      orderItems: {
+        select: {
+          weightPerUnit: true,
+          quantity: true,
+        },
       },
-    });
-    // Calculate total price and weight if needed
-    const items = await orderItems;
-    let totalWeight: number = 0;
-    items.forEach((item) => {
-      totalWeight += item.weightPerUnit.toNumber() * item.quantity;
-    });
-    return { order, totalWeight };
+    },
+    orderBy: [
+      {
+        status: "asc",
+      },
+      {
+        createdAt: "asc",
+      },
+    ],
+  });
+  const packaged_orders = orders.map((order) => {
+    const orderWeight = order.orderItems.reduce((orderItemSum, orderItem) => {
+      return (
+        orderItemSum + orderItem.weightPerUnit.toNumber() * orderItem.quantity
+      );
+    }, 0);
+    return { order, totalWeight: orderWeight };
   });
   return Promise.all(packaged_orders);
 }
@@ -82,8 +92,9 @@ export async function getPopularProducts(): Promise<PopularProductData[]> {
     take: 5,
     where: { orderId: { in: recentOrderIds } },
   });
+  // Extract product id values
   const productIds = popularItems.map((item) => item.productId);
-  // Get the product details for the productIds
+  // Get the names of the productIds
   const items = await prisma.product.findMany({
     where: { id: { in: productIds } },
     select: {
@@ -91,7 +102,9 @@ export async function getPopularProducts(): Promise<PopularProductData[]> {
       name: true,
     },
   });
-  // Make a Map for easy lookup of counts: productId -> quantity sold and
+
+  // Make maps for fast product name, quantity and order appearance lookup
+  const nameMap = new Map(items.map((item) => [item.id, { name: item.name }]));
   const countMap = new Map(
     popularItems.map((item) => [
       item.productId,
@@ -101,12 +114,11 @@ export async function getPopularProducts(): Promise<PopularProductData[]> {
       },
     ])
   );
-
-  const chartData: PopularProductData[] = items.map((product) => ({
-    name: product.name,
-    quantity: countMap.get(product.id)!.totalQuantitySold!,
-    frequency: countMap.get(product.id)!.ordersCount! / recentOrderIds.length,
+  // Collect data into chart data format
+  const chartData: PopularProductData[] = productIds.map((productId) => ({
+    name: nameMap.get(productId)!.name,
+    quantity: countMap.get(productId)!.totalQuantitySold!,
+    frequency: countMap.get(productId)!.ordersCount! / recentOrderIds.length,
   }));
-
   return chartData;
 }
