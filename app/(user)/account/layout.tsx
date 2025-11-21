@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Sidebar */}
-          <aside className="md:col-span-3 rounded-2xl border border-black/10 shadow-sm">
+          <aside className="md:col-span-3 rounded-2xl border border-black/10 shadow-sm h-fit md:sticky md:top-8">
             <nav className="p-4">
               <ul className="space-y-1">
                 <li>
@@ -28,9 +28,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </li>
                 <li>
                   <NavItem
-                    href="/account/past-orders"
+                    href="/account/orders"
                     icon={<Package className="h-4 w-4" />}
-                    label="Past orders"
+                    label="Orders"
                   />
                 </li>
               </ul>
