@@ -561,11 +561,7 @@ export default function CheckoutComponent({
                   Continue Shopping
                 </button>
                 <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // intentionally no-op: clicking does nothing
-                  }}
+                  type="submit"
                   disabled={
                     checkoutPending || selectedItems.size === 0 || totalSelectedWeight > 200
                   }

@@ -320,7 +320,7 @@ export default function ShoppingCartClient({
                   className="w-full"
                   disabled={isPending || modifiedQuantities.size > 0 || overweight}
                 >
-                  <Link href="/checkout">Proceed to Checkout</Link>
+                <Link href="/checkout">Proceed to Checkout</Link>
                 </Button>
               </div>
             </div>
