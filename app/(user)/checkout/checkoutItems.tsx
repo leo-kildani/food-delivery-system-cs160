@@ -96,10 +96,16 @@ export default function CheckoutComponent({
   // calculate only the selected items price and weighht
 
   const handleQuantityChange = (change: number, idx: number) => {
-    setQuantities((prev) => ({
-      ...prev,
-      [idx]: Math.max(0, prev[idx] + change),
-    }));
+    setQuantities((prev) => {
+      const current = prev[idx] || 0;
+      const product = cartItems[idx]?.product;
+      const max = product ? Number(product.quantityOnHand) : Infinity;
+      const next = Math.max(0, Math.min(max, current + change));
+      return {
+        ...prev,
+        [idx]: next,
+      };
+    });
     console.log(quantities);
   };
 
@@ -117,6 +123,7 @@ export default function CheckoutComponent({
     const weight = item?.product?.weightPerUnit
       ? Number(item.product.weightPerUnit)
       : 0;
+    const weight = item?.product?.weightPerUnit ? Number(item.product.weightPerUnit) : 0;
     const quantity = quantities[item.idx] || 0;
     return total + weight * quantity;
   }, 0);
