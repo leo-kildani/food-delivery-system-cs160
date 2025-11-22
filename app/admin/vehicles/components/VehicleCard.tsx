@@ -1,10 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Truck, Weight, Map } from "lucide-react";
-import { VehicleWithOrders } from "../actions";
+import {
+  DeployState,
+  deployVehicleAction,
+  VehicleWithOrders,
+} from "../actions";
 import VehicleRouteModal from "./VehicleRouteModal";
 
 interface VehicleCardProps {
@@ -13,9 +17,8 @@ interface VehicleCardProps {
   tempVehicleWeight: number; // Weight from temporarily assigned orders
   tempAssignedOrderCount: number; // Count from temporarily assigned orders
   assignedOrders: number[];
-  isDeploying: boolean;
   onSelect: () => void;
-  deployAction: (payload: FormData) => void;
+  changeDeployState: (state: DeployState) => void;
 }
 
 export function VehicleCard({
@@ -24,10 +27,19 @@ export function VehicleCard({
   tempVehicleWeight,
   tempAssignedOrderCount,
   assignedOrders,
-  isDeploying,
   onSelect,
-  deployAction,
+  changeDeployState,
 }: VehicleCardProps) {
+  // Deploy action state
+  const [deployState, deployAction, isDeploying] = useActionState(
+    async (prevState: DeployState, formData: FormData) => {
+      const newState = await deployVehicleAction(prevState, formData);
+      changeDeployState(newState);
+      if (newState.success) setIsModalOpen(true);
+      return newState;
+    },
+    {} as DeployState
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Total weight = persistent weight + temporary weight
