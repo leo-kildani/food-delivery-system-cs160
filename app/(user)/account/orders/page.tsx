@@ -1,5 +1,5 @@
-import { getUserOrders } from "./actions";
-import { OrderStatus } from "@prisma/client";
+import { getUserOrders, calculateAndUpdateOrderTotal } from "./actions";
+import { OrderStatus, Prisma } from "@prisma/client";
 import {
   Card,
   CardContent,
@@ -23,6 +23,16 @@ export default async function OrdersPage() {
         <p className="text-muted-foreground">Unable to load orders</p>
       </div>
     );
+  }
+
+  // Calculate and update total amounts for orders that don't have them
+  for (const order of orders) {
+    if (order.totalAmount === null) {
+      const calculatedTotal = await calculateAndUpdateOrderTotal(order.id);
+      if (calculatedTotal !== null) {
+        order.totalAmount = new Prisma.Decimal(calculatedTotal);
+      }
+    }
   }
 
   // Categorize orders
@@ -101,6 +111,13 @@ function OrderCard({
     0
   );
 
+  // Calculate total weight
+  const totalWeight = order.orderItems.reduce((sum, item) => {
+    const itemWeight =
+      parseFloat(item.weightPerUnit.toString()) * item.quantity;
+    return sum + itemWeight;
+  }, 0);
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
@@ -151,12 +168,22 @@ function OrderCard({
             <span className="text-muted-foreground">Items</span>
             <span className="font-medium">{totalItems}</span>
           </div>
-          {order.totalAmount && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-medium">
-                ${parseFloat(order.totalAmount.toString()).toFixed(2)}
-              </span>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Total Weight</span>
+            <span className="font-medium">{totalWeight.toFixed(2)} lbs</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Total Amount</span>
+            <span className="font-medium">
+              {order.totalAmount
+                ? `$${parseFloat(order.totalAmount.toString()).toFixed(2)}`
+                : "Calculating..."}
+            </span>
+          </div>
+          {totalWeight >= 20 && (
+            <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400">
+              <span>Heavy order surcharge</span>
+              <span>+$10.00</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
@@ -173,19 +200,28 @@ function OrderCard({
             Order Items
           </p>
           <div className="space-y-1">
-            {order.orderItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center text-sm"
-              >
-                <span className="text-muted-foreground">
-                  {item.product.name} ×{item.quantity}
-                </span>
-                <span className="font-medium">
-                  ${parseFloat(item.pricePerUnit.toString()).toFixed(2)}
-                </span>
-              </div>
-            ))}
+            {order.orderItems.map((item) => {
+              const itemWeight =
+                parseFloat(item.weightPerUnit.toString()) * item.quantity;
+              return (
+                <div
+                  key={item.id}
+                  className="flex justify-between items-start text-sm"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">
+                      {item.product.name} ×{item.quantity}
+                    </span>
+                    <span className="text-xs text-muted-foreground/70">
+                      {itemWeight.toFixed(2)} lbs
+                    </span>
+                  </div>
+                  <span className="font-medium">
+                    ${parseFloat(item.pricePerUnit.toString()).toFixed(2)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </CardContent>
