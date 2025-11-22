@@ -1,6 +1,11 @@
 "use client";
 import { useActionState, useEffect, useState, useRef } from "react";
-import { getCartItems, checkoutAction, CheckoutState, getAddresses, } from "./actions";
+import {
+  getCartItems,
+  checkoutAction,
+  CheckoutState,
+  getAddresses,
+} from "./actions";
 import { Button } from "@/components/ui/button";
 
 type CartItemWithProduct = {
@@ -123,7 +128,6 @@ export default function CheckoutComponent({
     const weight = item?.product?.weightPerUnit
       ? Number(item.product.weightPerUnit)
       : 0;
-    const weight = item?.product?.weightPerUnit ? Number(item.product.weightPerUnit) : 0;
     const quantity = quantities[item.idx] || 0;
     return total + weight * quantity;
   }, 0);
