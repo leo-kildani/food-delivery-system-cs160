@@ -97,18 +97,24 @@ model CartItem {
 }
 
 model Order {
-  id         Int         @id @default(autoincrement())
-  delivery   Vehicle?    @relation(fields: [VehicleId], references: [id], onDelete: SetNull)
-  VehicleId  Int?
-  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict) // preserve history
-  userId     String
-  status     OrderStatus @default(PENDING)
-  orderItems OrderItem[]
-  createdAt  DateTime
-  toAddress  String
+  id                Int         @id @default(autoincrement())
+  delivery          Vehicle?    @relation(fields: [VehicleId], references: [id], onDelete: SetNull)
+  VehicleId         Int?
+  user              User        @relation(fields: [userId], references: [id], onDelete: Restrict) // preserve history
+  userId            String
+  status            OrderStatus @default(PENDING)
+  orderItems        OrderItem[]
+  createdAt         DateTime
+  toAddress         String
+  stripeSessionId   String?     @unique
+  stripePaymentId   String?
+  paymentStatus     String?     @default("pending")
+  totalAmount       Decimal?    @db.Decimal(10, 2)
+  eta               Int?
 
   @@index([userId])
   @@index([VehicleId])
+  @@index([stripeSessionId])
 }
 
 model OrderItem {
