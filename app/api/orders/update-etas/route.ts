@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
 
   if (
     !user ||
-    user.user_metadata?.role !== "admin" ||
-    user.user_metadata?.role !== "empl"
+    (user.user_metadata?.role !== "admin" &&
+      user.user_metadata?.role !== "empl")
   ) {
     return NextResponse.json(
       { error: "Forbidden, Admin Only" },

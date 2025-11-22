@@ -106,11 +106,6 @@ function OrderCard({
   order: NonNullable<Awaited<ReturnType<typeof getUserOrders>>>[number];
   type: "pending" | "in-transit" | "past";
 }) {
-  const totalItems = order.orderItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
-
   // Calculate total weight
   const totalWeight = order.orderItems.reduce((sum, item) => {
     const itemWeight =
@@ -120,61 +115,66 @@ function OrderCard({
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <CardTitle className="text-base">Order #{order.id}</CardTitle>
-            <CardDescription>
-              {new Date(order.createdAt).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </CardDescription>
-          </div>
-          <OrderStatusBadge status={order.status} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Order Status Message */}
-        {type === "pending" && (
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              🕒 To Be Picked Up
-            </p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-              Your order is being prepared and waiting to be picked up by a
-              delivery vehicle.
-            </p>
-          </div>
-        )}
-
-        {type === "in-transit" && (
-          <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
-            <p className="text-sm font-medium text-green-900 dark:text-green-100">
-              🚚 Your Delivery is on the Way
-            </p>
-            {order.eta && (
-              <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                Estimated arrival: {order.eta} minutes
-              </p>
+            <OrderStatusBadge status={order.status} />
+            {type === "in-transit" && order.eta && (
+              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                ETA: {order.eta} min
+              </span>
             )}
           </div>
-        )}
+        </div>
+        <CardDescription className="text-xs space-y-0.5">
+          <div>{order.toAddress}</div>
+          <div>
+            {new Date(order.createdAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            at{" "}
+            {new Date(order.createdAt).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </div>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Order Items */}
+        <div className="space-y-1.5">
+          {order.orderItems.map((item) => {
+            const itemWeight =
+              parseFloat(item.weightPerUnit.toString()) * item.quantity;
+            const itemPrice = parseFloat(item.pricePerUnit.toString());
+            const itemTotal = itemPrice * item.quantity;
+            return (
+              <div
+                key={item.id}
+                className="flex justify-between items-center text-sm"
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="text-muted-foreground">
+                    {item.product.name} ×{item.quantity}
+                  </span>
+                  <span className="text-xs text-muted-foreground/60">
+                    {itemWeight.toFixed(2)} lbs
+                  </span>
+                </div>
+                <span className="font-medium">${itemTotal.toFixed(2)}</span>
+              </div>
+            );
+          })}
+        </div>
 
-        {/* Order Details */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Items</span>
-            <span className="font-medium">{totalItems}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Total Weight</span>
-            <span className="font-medium">{totalWeight.toFixed(2)} lbs</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Total Amount</span>
-            <span className="font-medium">
+        {/* Totals */}
+        <div className="border-t pt-2 space-y-1">
+          <div className="flex justify-between text-sm font-semibold">
+            <span>Total ({totalWeight.toFixed(2)} lbs)</span>
+            <span>
               {order.totalAmount
                 ? `$${parseFloat(order.totalAmount.toString()).toFixed(2)}`
                 : "Calculating..."}
@@ -182,47 +182,10 @@ function OrderCard({
           </div>
           {totalWeight >= 20 && (
             <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400">
-              <span>Heavy order surcharge</span>
+              <span>Includes heavy order surcharge</span>
               <span>+$10.00</span>
             </div>
           )}
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Delivery Address</span>
-            <span className="font-medium text-right max-w-[60%] truncate">
-              {order.toAddress}
-            </span>
-          </div>
-        </div>
-
-        {/* Order Items */}
-        <div className="border-t pt-3 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Order Items
-          </p>
-          <div className="space-y-1">
-            {order.orderItems.map((item) => {
-              const itemWeight =
-                parseFloat(item.weightPerUnit.toString()) * item.quantity;
-              return (
-                <div
-                  key={item.id}
-                  className="flex justify-between items-start text-sm"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-muted-foreground">
-                      {item.product.name} ×{item.quantity}
-                    </span>
-                    <span className="text-xs text-muted-foreground/70">
-                      {itemWeight.toFixed(2)} lbs
-                    </span>
-                  </div>
-                  <span className="font-medium">
-                    ${parseFloat(item.pricePerUnit.toString()).toFixed(2)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </CardContent>
     </Card>
