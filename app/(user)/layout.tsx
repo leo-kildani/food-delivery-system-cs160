@@ -12,10 +12,14 @@ export default async function UserLayout({
   const user = await getLoggedInUser();
   // Guest users (not logged in) can only access the home page
   const isGuest = !user;
-  
+
   //Shopping Cart Item Count in Corner
-  const cartItems = getCartItems();
-  const cartItemCount = (await cartItems).length;
+  let cartItemCount = 0;
+  // Only fetch cart items if the user is logged in
+  if (!isGuest) {
+    const cartItems = getCartItems();
+    cartItemCount = (await cartItems).length;
+  }
 
   return (
     <div>
@@ -69,7 +73,6 @@ export default async function UserLayout({
                   Admin
                 </Link>
               )}
-
 
               <div className="pr-9">
                 {/* Shopping cart - always shown but disabled for guest users */}
