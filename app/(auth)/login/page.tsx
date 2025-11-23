@@ -102,6 +102,12 @@ export default function LoginForm() {
                     {loginState.fieldErrors.password.join(", ")}
                   </p>
                 )}
+                {loginState.formError && (
+                  <p className="text-red-600 text-sm flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
+                    Invalid Username / Password.
+                  </p>
+                )}
               </div>
 
               <Button
