@@ -178,7 +178,7 @@ export default function StripeComponent({
         <button
           type="submit"
           disabled={!stripe || loading || processingOrder || disabled}
-          className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="cursor-pointer w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {processingOrder
             ? "Processing order..."

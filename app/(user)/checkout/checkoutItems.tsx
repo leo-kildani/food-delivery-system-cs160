@@ -527,7 +527,7 @@ export default function CheckoutComponent({
                   Grand Total:
                 </span>
                 <span className="text-lg font-bold text-gray-900">
-                  $ {computeGrandTotal()}
+                  $ {computeGrandTotal().toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-end space-x-4">
@@ -564,20 +564,20 @@ export default function CheckoutComponent({
               <p className="text-gray-600">Add some items to get started!</p>
             </div>
           )}
-        </div>
 
-        {/* Stripe Payment Section */}
-        <StripePayment
-          totalAmount={computeGrandTotal()}
-          selectedItemsData={selectedItemsData}
-          quantities={quantities}
-          selectedAddressId={selectedAddressId}
-          disabled={
-            selectedItems.size === 0 ||
-            totalSelectedWeight > 200 ||
-            !selectedAddressId
-          }
-        />
+          {/* Stripe Payment Section */}
+          <StripePayment
+            totalAmount={computeGrandTotal()}
+            selectedItemsData={selectedItemsData}
+            quantities={quantities}
+            selectedAddressId={selectedAddressId}
+            disabled={
+              selectedItems.size === 0 ||
+              totalSelectedWeight > 200 ||
+              !selectedAddressId
+            }
+          />
+        </div>
       </div>
     </div>
   );
