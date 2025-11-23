@@ -2,6 +2,7 @@ import Link from "next/link";
 import LogoutButton from "./logout-button";
 import ShoppingCartButton from "./shopping-cart-button";
 import { getLoggedInUser } from "./actions";
+import { getCartItems } from "./checkout/actions";
 
 export default async function UserLayout({
   children,
@@ -12,10 +13,18 @@ export default async function UserLayout({
   // Guest users (not logged in) can only access the home page
   const isGuest = !user;
 
+  //Shopping Cart Item Count in Corner
+  let cartItemCount = 0;
+  // Only fetch cart items if the user is logged in
+  if (!isGuest) {
+    const cartItems = getCartItems();
+    cartItemCount = (await cartItems).length;
+  }
+
   return (
     <div>
       <nav className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg border-b border-blue-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo Section */}
             <div className="flex items-center space-x-4">
@@ -65,8 +74,10 @@ export default async function UserLayout({
                 </Link>
               )}
 
-              {/* Shopping cart - always shown but disabled for guest users */}
-              <ShoppingCartButton disabled={isGuest} />
+              <div className="pr-9">
+                {/* Shopping cart - always shown but disabled for guest users */}
+                <ShoppingCartButton count={cartItemCount} disabled={isGuest} />
+              </div>
 
               {/* Logout - only shown for logged-in users */}
               {!isGuest && <LogoutButton />}
