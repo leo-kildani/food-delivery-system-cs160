@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,13 +41,20 @@ export function VehicleCard({
     {} as DeployState
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // Local vehicle state so we can optimistically reset after route completion
+  const [vehicleState, setVehicleState] = useState(vehicle);
+
+  // Keep local state in sync when parent passes new vehicle (e.g. after revalidation)
+  useEffect(() => {
+    setVehicleState(vehicle);
+  }, [vehicle]);
 
   // Total weight = persistent weight + temporary weight
-  const totalWeight = vehicle.totalAssignedWeight + tempVehicleWeight;
+  const totalWeight = vehicleState.totalAssignedWeight + tempVehicleWeight;
   const isOverloaded = totalWeight > 200;
 
   // Total orders = persistent orders + temporary orders
-  const totalOrderCount = vehicle.assignedOrdersCount + tempAssignedOrderCount;
+  const totalOrderCount = vehicleState.assignedOrdersCount + tempAssignedOrderCount;
 
   return (
     <Card
@@ -63,21 +70,21 @@ export function VehicleCard({
           <div className="flex items-center gap-2">
             <Truck className="h-5 w-5" />
             <span className="text-base font-semibold">
-              Vehicle #{vehicle.id}
+              Vehicle #{vehicleState.id}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Badge
               variant="default"
               className={
-                vehicle.status === "STANDBY"
+                vehicleState.status === "STANDBY"
                   ? "bg-green-100 text-green-800"
                   : "bg-blue-100 text-blue-800"
               }
             >
-              {vehicle.status === "STANDBY" ? "Available" : "In Transit"}
+              {vehicleState.status === "STANDBY" ? "Available" : "In Transit"}
             </Badge>
-            {vehicle.status === "IN_TRANSIT" && (
+            {vehicleState.status === "IN_TRANSIT" && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -132,10 +139,10 @@ export function VehicleCard({
             </div>
 
             {/* Show persistent orders info */}
-            {vehicle.assignedOrdersCount > 0 && (
+            {vehicleState.assignedOrdersCount > 0 && (
               <p className="text-green-600 font-medium text-xs mb-1">
-                ✓ {vehicle.assignedOrdersCount} deployed orders (
-                {vehicle.totalAssignedWeight.toFixed(1)} lbs)
+                ✓ {vehicleState.assignedOrdersCount} deployed orders (
+                {vehicleState.totalAssignedWeight.toFixed(1)} lbs)
               </p>
             )}
 
@@ -148,14 +155,14 @@ export function VehicleCard({
             )}
 
             {/* Show total if both exist */}
-            {vehicle.assignedOrdersCount > 0 && tempAssignedOrderCount > 0 && (
+            {vehicleState.assignedOrdersCount > 0 && tempAssignedOrderCount > 0 && (
               <p className="text-gray-700 font-medium text-xs border-t pt-1 mt-1">
                 Total: {totalOrderCount} orders ({totalWeight.toFixed(1)} lbs)
               </p>
             )}
           </div>
           <form action={deployAction}>
-            <input type="hidden" name="vehicleId" value={vehicle.id} />
+            <input type="hidden" name="vehicleId" value={vehicleState.id} />
             <input
               type="hidden"
               name="orderIds"
@@ -168,12 +175,12 @@ export function VehicleCard({
               disabled={
                 isDeploying ||
                 tempAssignedOrderCount === 0 ||
-                vehicle.status === "IN_TRANSIT"
+                vehicleState.status === "IN_TRANSIT"
               }
             >
               {isDeploying
                 ? "Deploying..."
-                : vehicle.status === "IN_TRANSIT"
+                : vehicleState.status === "IN_TRANSIT"
                 ? "Already Deployed"
                 : tempAssignedOrderCount === 0
                 ? "No New Orders"
@@ -183,16 +190,26 @@ export function VehicleCard({
         </div>
       </CardContent>
 
-      {isModalOpen && vehicle.status === "IN_TRANSIT" && (
+      {isModalOpen && vehicleState.status === "IN_TRANSIT" && (
         <VehicleRouteModal
           isOpen={isModalOpen}
           changeIsOpen={setIsModalOpen}
-          vehicleId={vehicle.id}
-          orders={vehicle.orders.map((order) => ({
+          vehicleId={vehicleState.id}
+          orders={vehicleState.orders.map((order) => ({
             id: order.id,
             address: order.toAddress,
             status: order.status,
           }))}
+          onVehicleReset={() => {
+            // Optimistically reset vehicle state; server revalidation will correct if needed
+            setVehicleState((prev) => ({
+              ...prev,
+              status: "STANDBY",
+              orders: [],
+              assignedOrdersCount: 0,
+              totalAssignedWeight: 0,
+            }));
+          }}
         />
       )}
     </Card>
