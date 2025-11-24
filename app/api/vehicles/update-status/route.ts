@@ -17,9 +17,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { vehicleId, status } = (await request.json()) as {
+    const { vehicleId, status, eta } = (await request.json()) as {
       vehicleId: number;
       status: string;
+      eta?: number;
     };
 
     if (!vehicleId || !status) {
@@ -29,11 +30,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const updateData: { status: string; eta?: number | null } = { status };
+    
+    // Set eta if provided, or null if status is STANDBY
+    if (eta !== undefined) {
+      updateData.eta = eta;
+      console.log("update eta");
+    } else if (status === 'STANDBY') {
+      updateData.eta = null;
+    }
+
+    // If status is STANDBY, clear VehicleId from all orders assigned to this vehicle
+    if (status === 'STANDBY') {
+      await prisma.order.updateMany({
+        where: { VehicleId: vehicleId },
+        data: { VehicleId: null },
+      });
+    }
+
     const updated = await prisma.vehicle.update({
       where: { id: vehicleId },
-      data: { status },
-      select: { id: true, status: true },
+      data: updateData,
+      select: { id: true, status: true, eta: true },
     });
+
 
     
     // Revalidate vehicles admin page to reflect new status

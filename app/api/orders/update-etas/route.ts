@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
   }
   try {
     const { orderETAs } = (await request.json()) as {
-      orderETAs: Array<{ orderId: number; etaMinutes: number }>;
+      orderETAs: Array<{ orderId: number; etaMinutes: number }>,
+      
     };
 
     if (!orderETAs || !Array.isArray(orderETAs)) {

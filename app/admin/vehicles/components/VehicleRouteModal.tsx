@@ -63,13 +63,20 @@ export default function VehicleRouteModal({
       .map(o => etas[o.id])
       .filter(v => v != null) as number[];
     if (!arrivalEtas.length) return -1;
-    console.log("Arrival ETAs:", arrivalEtas);
-    const maxArrival = arrivalEtas.reduce((a, b) => a + b, 0);
-    // return returnLeg != null ? maxArrival + returnLeg : maxArrival;
-    return maxArrival;
+    
+    // Get the maximum arrival time (last delivery)
+    const maxArrival = Math.max(...arrivalEtas);
+    
+    // Total ETA is the last delivery time plus the return leg
+    // If no return leg data, just use the delivery time
+    const totalEta = returnLeg != null ? maxArrival + returnLeg : maxArrival;
+    
+    console.log("Max Arrival ETA:", maxArrival, "Return Leg:", returnLeg, "Total:", totalEta);
+    
+    return totalEta;
   };
 
-  // Realtime subscription for order updates (eta/status)
+  // Realtime subscription for order updates (eta/status) and vehicle ETA
   useEffect(() => {
     if (!isOpen) return;
     // Initialize client once
@@ -96,15 +103,11 @@ export default function VehicleRouteModal({
             status: string;
           };
           if (!updated?.id) return;
-          // Merge ETA and immediately recompute total ETA.
-          setOrderEtas(prev => {
-            const next = {
-              ...prev,
-              [updated.id]: updated.eta ?? prev[updated.id] ?? null,
-            };
-            setEta(computeTotalEta(next, returnLegMinutes, orders));
-            return next;
-          });
+          // Update order ETAs locally but don't recompute vehicle ETA
+          setOrderEtas(prev => ({
+            ...prev,
+            [updated.id]: updated.eta ?? prev[updated.id] ?? null,
+          }));
           // Merge status + eta into optimizedOrders
           setOptimizedOrders(prev =>
             prev.map(o =>
@@ -119,8 +122,29 @@ export default function VehicleRouteModal({
           );
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'Vehicle',
+          filter: `id=eq.${vehicleId}`,
+        },
+        (payload: any) => {
+          const updated = payload.new as {
+            id: number;
+            eta: number | null;
+            status: string;
+          };
+          if (!updated || updated.id !== vehicleId) return;
+          // Update local ETA state from vehicle table
+          if (updated.eta !== null && updated.eta !== undefined) {
+            setEta(updated.eta);
+          }
+        }
+      )
       .subscribe();
-  }, [isOpen, vehicleId, returnLegMinutes]);
+  }, [isOpen, vehicleId, returnLegMinutes, orders]);
 
   // Cleanup channel on close/unmount
   useEffect(() => {
@@ -146,6 +170,60 @@ export default function VehicleRouteModal({
       mapInit.current = true;
     }
   }, []);
+  // const calculateOrderETAs = (
+  //   orders: Array<{ id: number; address: string; status: string }>,
+  //   legs: any[],
+  //   optimizedIndices: number[] | undefined
+  // ): {
+  //   reorderedOrders: OrderWithETA[];
+  //   orderETAs: Array<{ orderId: number; etaMinutes: number }>;
+  // } => {
+  //   if (!orders?.length) {
+  //     return { reorderedOrders: [], orderETAs: [] };
+  //   }
+
+  //   // Use optimized indices if valid, otherwise use original order
+  //   const indices =
+  //     optimizedIndices?.length &&
+  //     optimizedIndices.every((idx) => idx >= 0 && idx < orders.length)
+  //       ? optimizedIndices
+  //       : orders.map((_, i) => i);
+
+  //   let cumulativeDurationMs = 0;
+  //   const orderETAs: Array<{ orderId: number; etaMinutes: number }> = [];
+
+  //   const reorderedOrders = indices.map((originalIndex: number, i: number) => {
+  //     const order = orders[originalIndex];
+  //     const leg = legs[i];
+
+  //     if (leg?.durationMillis) {
+  //       cumulativeDurationMs += leg.durationMillis;
+  //     }
+
+  //     const etaMinutes = Math.round(cumulativeDurationMs / 60000);
+  //     orderETAs.push({ orderId: order.id, etaMinutes });
+
+  //     return { ...order, etaMinutes };
+  //   });
+
+  //   return { reorderedOrders, orderETAs };
+  // };
+  // Load existing vehicle ETA from database on mount
+  useEffect(() => {
+    if (!isOpen || !vehicleId) return;
+    let cancelled = false;
+    fetch(`/api/vehicles/${vehicleId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled && data?.eta != null) {
+          setEta(data.eta);
+        }
+      })
+      .catch(err => console.error('Failed to fetch vehicle ETA:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, vehicleId]);
 
   // Load existing ETAs first so we avoid recomputing them if already persisted.
   useEffect(() => {
@@ -275,15 +353,23 @@ export default function VehicleRouteModal({
           }
 
           const route = result.routes[0];
+          
 
           // Reorder orders based on optimized route and compute ETA for each order.
           // Only assign / persist ETA if it was missing (null) from DB load.
-          console.log(route.optimizedIntermediateWaypointIndices, route.legs);
-          if (route.optimizedIntermediateWaypointIndices && route.legs) {
+          if (route.legs) {
+            console.log(route.optimizedIntermediateWaypointIndices, route.legs);
             const optimizedIndices = route.optimizedIntermediateWaypointIndices;
+                // Use optimized indices if valid, otherwise use original order
+            const indices =
+              optimizedIndices?.length &&
+              optimizedIndices.every((idx) => idx >= 0 && idx < orders.length)
+                ? optimizedIndices
+                : orders.map((_, i) => i);
+
             let cumulativeDurationMs = 0;
             const newEtasMap: Record<number, number> = {};
-            const reorderedOrders = optimizedIndices.map(
+            const reorderedOrders = indices.map(
               (originalIndex: number, i: number) => {
                 const order = orders[originalIndex];
                 const leg = route.legs[i];
@@ -302,6 +388,14 @@ export default function VehicleRouteModal({
                 };
               }
             );
+            // if (route.legs?.length) {
+            //   const { reorderedOrders, orderETAs } = calculateOrderETAs(
+            //     orders,
+            //     route.legs,
+            //     route.optimizedIntermediateWaypointIndices
+            //   );
+            // }
+
             setOptimizedOrders(reorderedOrders);
             if (Object.keys(newEtasMap).length) {
               // Merge newly computed ETAs locally & update total ETA in same render cycle.
@@ -351,6 +445,7 @@ export default function VehicleRouteModal({
               // If you want to store them in an array like mapPolylines:
               // mapPolylines.push(legPolyline);
             });
+
           }
 
           // Create waypoint markers
@@ -361,14 +456,22 @@ export default function VehicleRouteModal({
           // Fit the map to the route.
           map.fitBounds(route.viewport);
 
-          // Capture return leg duration separately so total ETA can be derived from per-order ETAs + return leg.
+          // Capture return leg duration and compute total vehicle ETA, then save to database
           if (route.legs && route.legs.length) {
             const lastLeg = route.legs[route.legs.length - 1];
             const lastLegMinutes = Math.round((lastLeg.durationMillis || 0) / 60000);
             const rl = lastLegMinutes > 0 ? lastLegMinutes : null;
             setReturnLegMinutes(rl);
-            // Recalculate total immediately with updated return leg.
-            setEta(computeTotalEta(orderEtas, rl, orders));
+            // Compute total vehicle ETA from order ETAs + return leg
+            const totalVehicleEta = computeTotalEta(orderEtas, rl, orders);
+            if (totalVehicleEta >= 0) {
+              // Save to database - the realtime subscription will update local state
+              fetch('/api/vehicles/update-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vehicleId, status: 'IN_TRANSIT', eta: totalVehicleEta }),
+              }).catch(err => console.error('Failed to save initial vehicle ETA:', err));
+            }
           }
         }
       } catch (e) {
@@ -377,11 +480,6 @@ export default function VehicleRouteModal({
     };
     initMaps();
   }, [orders, isOpen, orderEtas, etasLoaded]);
-
-  // Keep ETA in sync when return leg changes independently (without route recompute).
-  useEffect(() => {
-    setEta(computeTotalEta(orderEtas, returnLegMinutes, orders));
-  }, [returnLegMinutes]);
 
   // Persist pending ETAs once
   useEffect(() => {
@@ -411,7 +509,7 @@ export default function VehicleRouteModal({
       fetch('/api/vehicles/update-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleId, status: 'STANDBY' }),
+        body: JSON.stringify({ vehicleId, status: 'STANDBY', eta: null }),
       }).then(res => {
         if (!res.ok) {
           // Allow retry if failed
