@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Navigation, Clock } from "lucide-react";
+import { MapPin, Navigation, Clock, Play, Square } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +25,13 @@ interface VehicleRouteModalProps {
   }>;
 }
 
+interface OrderWithETA {
+  id: number;
+  address: string;
+  status: string;
+  etaMinutes?: number;
+}
+
 export default function VehicleRouteModal({
   isOpen,
   changeIsOpen,
@@ -33,11 +40,9 @@ export default function VehicleRouteModal({
 }: VehicleRouteModalProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
-  const fetchedRef = useRef(false);
   const [eta, setEta] = useState<number>(-1);
-  const [optimizedOrders, setOptimizedOrders] = useState<
-    Array<{ id: number; address: string; status: string; etaMinutes?: number }>
-  >([]);
+  const [optimizedOrders, setOptimizedOrders] = useState<OrderWithETA[]>([]);
+
   // Initialize Google Maps API options once
   useEffect(() => {
     if (!mapInit.current) {
@@ -49,192 +54,170 @@ export default function VehicleRouteModal({
     }
   }, []);
 
-  //   Retrieve Google Maps HTML Elements on re-renders
+  const calculateOrderETAs = (
+    orders: Array<{ id: number; address: string; status: string }>,
+    legs: any[],
+    optimizedIndices: number[] | undefined
+  ): {
+    reorderedOrders: OrderWithETA[];
+    orderETAs: Array<{ orderId: number; etaMinutes: number }>;
+  } => {
+    if (!orders?.length) {
+      return { reorderedOrders: [], orderETAs: [] };
+    }
+
+    // Use optimized indices if valid, otherwise use original order
+    const indices =
+      optimizedIndices?.length &&
+      optimizedIndices.every((idx) => idx >= 0 && idx < orders.length)
+        ? optimizedIndices
+        : orders.map((_, i) => i);
+
+    let cumulativeDurationMs = 0;
+    const orderETAs: Array<{ orderId: number; etaMinutes: number }> = [];
+
+    const reorderedOrders = indices.map((originalIndex: number, i: number) => {
+      const order = orders[originalIndex];
+      const leg = legs[i];
+
+      if (leg?.durationMillis) {
+        cumulativeDurationMs += leg.durationMillis;
+      }
+
+      const etaMinutes = Math.round(cumulativeDurationMs / 60000);
+      orderETAs.push({ orderId: order.id, etaMinutes });
+
+      return { ...order, etaMinutes };
+    });
+
+    return { reorderedOrders, orderETAs };
+  };
+
+  const saveOrderETAs = async (
+    orderETAs: Array<{ orderId: number; etaMinutes: number }>
+  ) => {
+    try {
+      const response = await fetch("/api/orders/update-etas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderETAs }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to save ETAs:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error saving ETAs:", error);
+    }
+  };
+
+  const renderRoutePolylines = (legs: any[], map: any) => {
+    legs.forEach((leg, legIndex) => {
+      const isReturnLeg = legIndex === legs.length - 1;
+
+      new google.maps.Polyline({
+        path: leg.path,
+        strokeColor: isReturnLeg ? "#FF0000" : "#4285F4",
+        strokeOpacity: 1.0,
+        strokeWeight: 5,
+        map,
+      });
+    });
+  };
+
+  const createMarkerOptions = (
+    defaultOptions: google.maps.marker.AdvancedMarkerElementOptions,
+    waypointMarkerDetails: any,
+    PinElement: any,
+    map: any
+  ) => {
+    const { index, totalMarkers } = waypointMarkerDetails;
+    const isStore = index === 0 || index === totalMarkers - 1;
+
+    return {
+      ...defaultOptions,
+      map,
+      content: new PinElement({
+        glyphText: isStore ? "Store" : index.toString(),
+        glyphColor: "white",
+        background: isStore ? "green" : "blue",
+        borderColor: isStore ? "green" : "blue",
+      }).element,
+    };
+  };
+
   useEffect(() => {
-    if (!isOpen || fetchedRef.current) return;
+    if (!isOpen || orders.length === 0) return;
 
-    fetchedRef.current = true;
-
-    const initMaps = async () => {
+    const initMap = async () => {
       try {
-        const [
-          { Map },
-          { PinElement },
-          // @ts-ignore
-          { Route },
-        ] = await Promise.all([
+        const [{ Map }, { PinElement }, routesLib] = await Promise.all([
           importLibrary("maps"),
           importLibrary("marker"),
           importLibrary("routes"),
         ]);
+        // @ts-ignore - Route class exists but not in type definitions
+        const { Route } = routesLib;
 
-        // Initialize map - recreate each time since DOM element is remounted
-        if (mapRef.current) {
-          const map = new Map(mapRef.current, {
-            center: STORE_LOCATION,
-            zoom: 10,
-            mapId: "ADDR",
-            // Disable UI controls for a cleaner map
-            disableDefaultUI: true,
-            zoomControl: true, // Keep only zoom control
-            gestureHandling: "greedy", // Allow scrolling without Ctrl key
-          });
+        if (!mapRef.current) return;
 
-          // Compute route for delivery
-          const request = {
-            origin: STORE_LOCATION,
-            destination: STORE_LOCATION,
-            travelMode: "DRIVING",
-            intermediates: orders.map((o) => ({
-              location: o.address,
-              vehicleStopover: true,
-            })),
-            optimizeWaypointOrder: true, // Enable route optimization
-            computeAlternativeRoutes: false,
-            fields: ["*"],
-          };
+        const map = new Map(mapRef.current, {
+          center: STORE_LOCATION,
+          zoom: 10,
+          mapId: "ADDR",
+          disableDefaultUI: true,
+          zoomControl: true,
+          gestureHandling: "greedy",
+        });
 
-          // Alter style for each order drop-off and store location.
-          function markerOptionsMaker(
-            defaultOptions: google.maps.marker.AdvancedMarkerElementOptions,
-            //@ts-ignore
-            waypointMarkerDetails: google.maps.routes.WaypointMarkerDetails
-          ) {
-            const { index, totalMarkers, leg } = waypointMarkerDetails;
+        const result = await Route.computeRoutes({
+          origin: STORE_LOCATION,
+          destination: STORE_LOCATION,
+          travelMode: "DRIVING",
+          intermediates: orders.map((order) => ({
+            location: order.address,
+            vehicleStopover: true,
+          })),
+          optimizeWaypointOrder: true,
+          computeAlternativeRoutes: false,
+          fields: ["*"],
+        });
 
-            // Style the origin and destination waypoint (both are store).
-            if (index === 0 || index == totalMarkers - 1) {
-              return {
-                ...defaultOptions,
-                map: map,
-                content: new PinElement({
-                  // @ts-ignore
-                  glyphText: "Store",
-                  glyphColor: "white",
-                  background: "green",
-                  borderColor: "green",
-                }).element,
-              };
-            }
+        if (!result?.routes?.[0]) {
+          console.error("No routes found");
+          return;
+        }
 
-            // Style all intermediate waypoints.
-            if (!(index === 0 || index === totalMarkers - 1)) {
-              return {
-                ...defaultOptions,
-                map: map,
-                content: new PinElement({
-                  // @ts-ignore
-                  glyphText: index.toString(),
-                  glyphColor: "white",
-                  background: "blue",
-                  borderColor: "blue",
-                }).element,
-              };
-            }
+        const route = result.routes[0];
 
-            return { ...defaultOptions, map: map };
-          }
-
-          // Call computeRoutes to get the directions.
-          const result = await Route.computeRoutes(request);
-
-          // Check if result and routes exist
-          if (!result || !result.routes || result.routes.length === 0) {
-            console.warn("No routes found in result");
-            return;
-          }
-
-          const route = result.routes[0];
-
-          // Reorder orders based on optimized route and compute ETA for each order
-          if (route.optimizedIntermediateWaypointIndices && route.legs) {
-            const optimizedIndices = route.optimizedIntermediateWaypointIndices;
-            let cumulativeDurationMs = 0;
-            const orderETAs: Array<{ orderId: number; etaMinutes: number }> =
-              [];
-
-            const reorderedOrders = optimizedIndices.map(
-              (originalIndex: number, i: number) => {
-                const order = orders[originalIndex];
-                const leg = route.legs[i];
-
-                cumulativeDurationMs += leg.durationMillis || 0;
-                const etaMinutes = Math.round(cumulativeDurationMs / 60000);
-
-                orderETAs.push({ orderId: order.id, etaMinutes });
-
-                return {
-                  ...order,
-                  etaMinutes,
-                };
-              }
-            );
-            setOptimizedOrders(reorderedOrders);
-
-            // Use fetch to call the API route
-            fetch("/api/orders/update-etas", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orderETAs }),
-            })
-              .then((res) => {
-                if (!res.ok) {
-                  console.error("Failed to save ETAs");
-                }
-              })
-              .catch((err) => {
-                console.error("Error saving ETAs:", err);
-              });
-          }
-
-          // Ensure the 'legs' field is requested in your ComputeRoutesRequest
-          // For example: fields: ['legs', 'path']
-
-          if (route.legs) {
-            // @ts-ignore
-            route.legs.forEach((leg, legIndex) => {
-              const totalLegs = route.legs.length;
-              let polylineColor: string;
-
-              // Last leg (return to store) should be red
-              if (legIndex === totalLegs - 1) {
-                polylineColor = "#FF0000"; // Red for return route
-              } else {
-                polylineColor = "#4285F4"; // Blue for delivery routes
-              }
-
-              // Create a polyline for each leg with the desired color
-              const legPolyline = new google.maps.Polyline({
-                path: leg.path, // Assuming each leg has a 'path' property
-                strokeColor: polylineColor,
-                strokeOpacity: 1.0,
-                strokeWeight: 5,
-                map: map,
-              });
-
-              // If you want to store them in an array like mapPolylines:
-              // mapPolylines.push(legPolyline);
-            });
-          }
-
-          // Create waypoint markers
-          const markers = await route.createWaypointAdvancedMarkers(
-            markerOptionsMaker
+        if (route.legs?.length) {
+          const { reorderedOrders, orderETAs } = calculateOrderETAs(
+            orders,
+            route.legs,
+            route.optimizedIntermediateWaypointIndices
           );
 
-          // Fit the map to the route.
-          map.fitBounds(route.viewport);
-
-          // Set ETA to minutes
-          if (route.durationMillis) {
-            setEta(Math.round(route.durationMillis / 60000));
-          }
+          setOptimizedOrders(reorderedOrders);
+          await saveOrderETAs(orderETAs);
+          renderRoutePolylines(route.legs, map);
         }
-      } catch (e) {
-        console.error("Error initializing map:", e);
+
+        await route.createWaypointAdvancedMarkers(
+          (defaultOptions: any, details: any) =>
+            createMarkerOptions(defaultOptions, details, PinElement, map)
+        );
+
+        map.fitBounds(route.viewport);
+
+        if (route.durationMillis) {
+          setEta(Math.round(route.durationMillis / 60000));
+        }
+      } catch (error) {
+        console.error("Error initializing map:", error);
       }
     };
-    initMaps();
+
+    initMap();
   }, [orders, isOpen]);
 
   return (
