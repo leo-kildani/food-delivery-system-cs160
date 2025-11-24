@@ -3,6 +3,9 @@ import LogoutButton from "./logout-button";
 import { createClient } from "@/lib/supabase/server";
 import { House } from "lucide-react";
 
+// Force dynamic rendering since we use cookies and database
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLayout({
   children,
 }: {

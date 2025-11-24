@@ -5,13 +5,16 @@ import { Elements } from "@stripe/react-stripe-js";
 import { convertToSubcurrency } from "@/lib/utils";
 import StripeComponent from "./stripeComponent";
 
-if (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === undefined) {
-  throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY not defined.");
-}
+// Lazy-load Stripe to handle missing env var gracefully
+const getStripePromise = () => {
+  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+    console.error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY not defined");
+    return null;
+  }
+  return loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+};
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-);
+const stripePromise = getStripePromise();
 
 type StripePaymentProps = {
   totalAmount: number;
