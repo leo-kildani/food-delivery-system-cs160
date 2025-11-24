@@ -107,6 +107,7 @@ export async function getVehicles(): Promise<VehicleWithOrders[]> {
       // Convert any Decimal fields if they exist
       orders: vehicle.orders.map((order) => ({
         ...order,
+        totalAmount: order.totalAmount ? order.totalAmount.toNumber() : null,
         orderItems: order.orderItems.map((item) => ({
           ...item,
           pricePerUnit: item.pricePerUnit.toNumber(),
@@ -122,8 +123,8 @@ export async function getVehicles(): Promise<VehicleWithOrders[]> {
 
   return vehiclesWithOrders;
 }
-interface PendingOrder {
-  order: Order;
+export interface PendingOrder {
+  order: Omit<Order, 'totalAmount'> & { totalAmount: number | null };
   totalPrice: number;
   totalWeight: number;
 }
@@ -152,7 +153,14 @@ export async function getPendingOrders(): Promise<PendingOrder[]> {
     }, 0);
     // Destructuring to remove orderItems ("decimal objects not supported", and unnecessary)
     const { orderItems, ...plainOrder } = order;
-    return { order: plainOrder, totalPrice, totalWeight };
+
+    // Serialize totalAmount Decimal to number
+    const serializedOrder = {
+      ...plainOrder,
+      totalAmount: plainOrder.totalAmount ? plainOrder.totalAmount.toNumber() : null,
+    };
+
+    return { order: serializedOrder, totalPrice, totalWeight };
   });
   return Promise.all(packaged_orders);
 }

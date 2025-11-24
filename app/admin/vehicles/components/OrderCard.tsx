@@ -6,7 +6,7 @@ import { Order } from "@prisma/client";
 import { Package, MapPin, DollarSign, Weight } from "lucide-react";
 
 type PendingOrder = {
-  order: Order,
+  order: Omit<Order, 'totalAmount'> & { totalAmount: number | null },
   totalPrice: number,
   totalWeight: number,
 }

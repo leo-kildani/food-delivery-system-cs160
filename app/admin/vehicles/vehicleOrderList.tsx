@@ -3,16 +3,11 @@ import { Separator } from "@/components/ui/separator";
 import { Order } from "@prisma/client";
 import { useState, useActionState, useEffect } from "react";
 import { Truck, Package } from "lucide-react";
-import { deployVehicleAction, DeployState, VehicleWithOrders } from "./actions";
+import { deployVehicleAction, DeployState, VehicleWithOrders, PendingOrder} from "./actions";
 import { VehicleCard, OrderCard, DeployFeedback } from "./components";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type PendingOrder = {
-  order: Order;
-  totalPrice: number;
-  totalWeight: number;
-};
 
 export default function VehicleOrderList({
   vehicles,

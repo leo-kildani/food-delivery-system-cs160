@@ -24,6 +24,7 @@ interface VehicleRouteModalProps {
     address: string;
     status: string;
   }>;
+  onVehicleReset?: () => void; 
 }
 
 interface OrderWithETA {
@@ -38,6 +39,7 @@ export default function VehicleRouteModal({
   changeIsOpen,
   vehicleId,
   orders,
+  onVehicleReset,
 }: VehicleRouteModalProps) {
   // map and order states/refs
   const mapRef = useRef<HTMLDivElement>(null);
@@ -247,6 +249,8 @@ export default function VehicleRouteModal({
         }
       };
       completeVehicle();
+      onVehicleReset?.();
+
     }
   }, [eta, vehicleId]);
 
