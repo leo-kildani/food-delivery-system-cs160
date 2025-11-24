@@ -1,12 +1,8 @@
 "use client";
-import { useActionState, useEffect, useState, useRef } from "react";
-import {
-  getCartItems,
-  checkoutAction,
-  CheckoutState,
-  getAddresses,
-} from "./actions";
+import { useEffect, useState, useRef } from "react";
+import { getCartItems, getAddresses } from "./actions";
 import { Button } from "@/components/ui/button";
+import StripePayment from "./stripePayment";
 
 type CartItemWithProduct = {
   product: {
@@ -35,10 +31,6 @@ export default function CheckoutComponent({
   initialCartItems,
   initialAddresses,
 }: CheckoutClientProps) {
-  const [checkoutState, checkoutFormAction, checkoutPending] = useActionState(
-    checkoutAction,
-    {} as CheckoutState
-  );
   const [cartItems, setCartItems] =
     useState<CartItemWithProduct[]>(initialCartItems); // cart data retrieved from database
   const [selectedItems, setSelectedItems] = useState<Set<number>>(
@@ -132,6 +124,27 @@ export default function CheckoutComponent({
     return total + weight * quantity;
   }, 0);
 
+  const computeGrandTotal = () => {
+    const { itemsTotal, totalWeight } = selectedItemsData.reduce(
+      (acc, item) => {
+        const cost = item?.product?.pricePerUnit
+          ? Number(item.product.pricePerUnit)
+          : 0;
+        const weight = item?.product?.weightPerUnit
+          ? Number(item.product.weightPerUnit)
+          : 0;
+        const qty = quantities[item.idx] || 0;
+        acc.itemsTotal += cost * qty;
+        acc.totalWeight += weight * qty;
+        return acc;
+      },
+      { itemsTotal: 0, totalWeight: 0 }
+    );
+
+    const fee = totalWeight > 20 ? 10 : 0;
+    return Number((itemsTotal + fee).toFixed(2));
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -159,20 +172,7 @@ export default function CheckoutComponent({
           <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
         </div>
 
-        <form action={checkoutFormAction} className="p-6">
-          <input
-            type="hidden"
-            name="selectedItems"
-            value={JSON.stringify(
-              selectedItemsData.map((item) => ({
-                productId: item.product?.id,
-                quantity: quantities[item.idx],
-                pricePerUnit: Number(item.product?.pricePerUnit ?? 0),
-                weightPerUnit: Number(item.product?.weightPerUnit ?? 0),
-              }))
-            )}
-          />
-
+        <div className="p-6">
           {/* Select All button */}
           {cartItems.length > 0 && (
             <div className="flex items-center justify-between mb-4">
@@ -192,22 +192,6 @@ export default function CheckoutComponent({
               </div>
             </div>
           )}
-
-          <input
-            type="hidden"
-            name="selectedAddressId"
-            value={selectedAddressId || ""}
-          />
-          <input
-            type="hidden"
-            name="additionalFee"
-            value={totalSelectedWeight > 20 ? 10 : 0}
-          />
-          <input
-            type="hidden"
-            name="overweightBlocked"
-            value={totalSelectedWeight > 200 ? "1" : "0"}
-          />
           <div className="space-y-4">
             {cartItems.map(
               (
@@ -543,31 +527,7 @@ export default function CheckoutComponent({
                   Grand Total:
                 </span>
                 <span className="text-lg font-bold text-gray-900">
-                  ${" "}
-                  {(() => {
-                    const itemsTotal = selectedItemsData.reduce(
-                      (total, item) => {
-                        const cost = item?.product?.pricePerUnit
-                          ? Number(item.product.pricePerUnit)
-                          : 0;
-                        const quantity = quantities[item.idx] || 0;
-                        return total + cost * quantity;
-                      },
-                      0
-                    );
-                    const totalWeight = selectedItemsData.reduce(
-                      (total, item) => {
-                        const weight = item?.product?.weightPerUnit
-                          ? Number(item.product.weightPerUnit)
-                          : 0;
-                        const quantity = quantities[item.idx] || 0;
-                        return total + weight * quantity;
-                      },
-                      0
-                    );
-                    const fee = totalWeight > 20 ? 10 : 0;
-                    return (itemsTotal + fee).toFixed(2);
-                  })()}
+                  $ {computeGrandTotal().toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-end space-x-4">
@@ -577,19 +537,6 @@ export default function CheckoutComponent({
                   className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
                 >
                   Continue Shopping
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    checkoutPending ||
-                    selectedItems.size === 0 ||
-                    totalSelectedWeight > 200
-                  }
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors font-semibold disabled:opacity-50"
-                >
-                  {checkoutPending
-                    ? "Processing..."
-                    : `Buy ${selectedItems.size} Item(s)`}
                 </button>
               </div>
             </div>
@@ -617,7 +564,20 @@ export default function CheckoutComponent({
               <p className="text-gray-600">Add some items to get started!</p>
             </div>
           )}
-        </form>
+
+          {/* Stripe Payment Section */}
+          <StripePayment
+            totalAmount={computeGrandTotal()}
+            selectedItemsData={selectedItemsData}
+            quantities={quantities}
+            selectedAddressId={selectedAddressId}
+            disabled={
+              selectedItems.size === 0 ||
+              totalSelectedWeight > 200 ||
+              !selectedAddressId
+            }
+          />
+        </div>
       </div>
     </div>
   );
