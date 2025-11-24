@@ -153,9 +153,15 @@ export default function VehicleRouteModal({
             const orderETAs: Array<{ orderId: number; etaMinutes: number }> =
               [];
 
-            const reorderedOrders = optimizedIndices.map(
-              (originalIndex: number, i: number) => {
+            const reorderedOrders = optimizedIndices
+              .map((originalIndex: number, i: number) => {
                 const order = orders[originalIndex];
+                // Safety check: skip if order doesn't exist
+                if (!order) {
+                  console.warn(`Order at index ${originalIndex} not found`);
+                  return null;
+                }
+                
                 const leg = route.legs[i];
 
                 cumulativeDurationMs += leg.durationMillis || 0;
@@ -167,8 +173,8 @@ export default function VehicleRouteModal({
                   ...order,
                   etaMinutes,
                 };
-              }
-            );
+              })
+              .filter((order: any) => order !== null) as Array<{ id: number; address: string; status: string; etaMinutes: number }>;
             setOptimizedOrders(reorderedOrders);
 
             // Use fetch to call the API route
