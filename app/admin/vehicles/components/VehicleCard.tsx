@@ -37,7 +37,11 @@ export function VehicleCard({
     async (prevState: DeployState, formData: FormData) => {
       const newState = await deployVehicleAction(prevState, formData);
       changeDeployState(newState);
-      if (newState.success) setIsModalOpen(true);
+      if (newState.success) {
+        setIsModalOpen(true);
+        // Clear pending assignments after successful deployment
+        onClearPendingAssignments?.();
+      }
       return newState;
     },
     {} as DeployState
@@ -46,13 +50,25 @@ export function VehicleCard({
   // Local vehicle state so we can optimistically reset after route completion
   const [vehicleState, setVehicleState] = useState(vehicle);
 
+
+
   // Keep local state in sync when parent passes new vehicle (e.g. after revalidation)
   useEffect(() => {
-    setVehicleState(vehicle);
-    // Clear pending assignments when vehicle updates (e.g., after deployment)
-    if (vehicle.status === "IN_TRANSIT" && onClearPendingAssignments) {
-      onClearPendingAssignments();
-    }
+    console.log("VehicleCard received new vehicle prop:", vehicle);
+    // Filter out COMPLETE orders from the vehicle
+    const activeOrders = vehicle.orders.filter(order => order.status !== "COMPLETE");
+    const activeOrderWeight = activeOrders.reduce((total, order) => {
+      const orderWeight = order.orderItems.reduce((orderTotal, item) => {
+        return orderTotal + item.weightPerUnit * item.quantity;
+      }, 0);
+      return total + orderWeight;
+    }, 0);
+    setVehicleState({
+      ...vehicle,
+      orders: activeOrders,
+      assignedOrdersCount: activeOrders.length,
+      totalAssignedWeight: activeOrderWeight,
+    });
   }, [vehicle, onClearPendingAssignments]);
 
   // Total weight = persistent weight + temporary weight

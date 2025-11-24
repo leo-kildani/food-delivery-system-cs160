@@ -57,7 +57,11 @@ export default function VehicleOrderList({
     const orderIds = assignedOrders[vehicleId] || [];
     return orderIds.reduce((total, orderId) => {
       const order = pendingOrders.find((o) => o.order.id === orderId);
-      return total + (order?.totalWeight || 0);
+      // Only count weight if order exists and is not COMPLETE
+      if (order && order.order.status !== "COMPLETE") {
+        return total + order.totalWeight;
+      }
+      return total;
     }, 0);
   };
 
@@ -110,6 +114,13 @@ export default function VehicleOrderList({
                 changeDeployState={(state: DeployState) =>
                   setDeployVehicleState(state)
                 }
+                onClearPendingAssignments={() => {
+                  setAssignedOrders((prev) => {
+                    const updated = { ...prev };
+                    delete updated[vehicle.id];
+                    return updated;
+                  });
+                }}
               />
             );
           })}
@@ -127,6 +138,11 @@ export default function VehicleOrderList({
             </h3>
             <div className="grid gap-4">
               {pendingOrders.map((order) => {
+                // Skip COMPLETE orders
+                if (order.order.status === "COMPLETE") {
+                  return null;
+                }
+                
                 const isAssigned = assignedOrders[selectedVehicle]?.includes(
                   order.order.id
                 );

@@ -56,7 +56,18 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 4. Fetch only the orders we just completed with serializable data
+      // 4. Safety check: Ensure all COMPLETE orders have VehicleId set to null
+      await tx.order.updateMany({
+        where: {
+          status: "COMPLETE",
+          VehicleId: { not: null },
+        },
+        data: {
+          VehicleId: null,
+        },
+      });
+
+      // 5. Fetch only the orders we just completed with serializable data
       const updatedOrders = await tx.order.findMany({
         where: { id: { in: ordersToComplete.map(o => o.id) } },
       });
