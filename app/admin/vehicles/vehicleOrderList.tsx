@@ -1,10 +1,12 @@
 "use client";
 import { Separator } from "@/components/ui/separator";
 import { Order } from "@prisma/client";
-import { useState, useActionState } from "react";
+import { useState, useActionState, useEffect } from "react";
 import { Truck, Package } from "lucide-react";
 import { deployVehicleAction, DeployState, VehicleWithOrders } from "./actions";
 import { VehicleCard, OrderCard, DeployFeedback } from "./components";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type PendingOrder = {
   order: Order;
@@ -25,6 +27,33 @@ export default function VehicleOrderList({
   }>({}); // vehicleId -> orderIds[]
 
   const [deployVehicleState, setDeployVehicleState] = useState<DeployState>({});
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("vehicle-dashboard-updates")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Vehicle" },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Order" },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
 
   console.log(assignedOrders);
 

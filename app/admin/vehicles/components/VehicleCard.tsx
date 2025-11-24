@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,27 @@ export function VehicleCard({
     {} as DeployState
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (
+      vehicle.status === "IN_TRANSIT" &&
+      vehicle.eta !== null &&
+      vehicle.eta <= 0
+    ) {
+      const completeVehicle = async () => {
+        try {
+          await fetch("/api/vehicles/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vehicleId: vehicle.id }),
+          });
+        } catch (error) {
+          console.error("Error completing vehicle:", error);
+        }
+      };
+      completeVehicle();
+    }
+  }, [vehicle.status, vehicle.eta, vehicle.id]);
 
   // Total weight = persistent weight + temporary weight
   const totalWeight = vehicle.totalAssignedWeight + tempVehicleWeight;

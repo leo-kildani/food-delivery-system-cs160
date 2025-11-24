@@ -7,12 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Navigation, Clock, Play, Square } from "lucide-react";
+import { MapPin, Navigation, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef, useState } from "react";
 import { STORE_LOCATION } from "@/lib/constants";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import { createClient } from "@/lib/supabase/client";
 
 interface VehicleRouteModalProps {
   isOpen: boolean;
@@ -38,10 +39,15 @@ export default function VehicleRouteModal({
   vehicleId,
   orders,
 }: VehicleRouteModalProps) {
+  // map and order states/refs
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
   const [eta, setEta] = useState<number>(-1);
   const [optimizedOrders, setOptimizedOrders] = useState<OrderWithETA[]>([]);
+
+  // supabase refs
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const channelRef = useRef<any>(null);
 
   // Initialize Google Maps API options once
   useEffect(() => {
@@ -53,6 +59,71 @@ export default function VehicleRouteModal({
       mapInit.current = true;
     }
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    if (channelRef.current) return;
+
+    const supabase = supabaseRef.current;
+    channelRef.current = supabase
+      .channel(`vehicle-orders-${vehicleId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "Order",
+          filter: `VehicleId=eq.${vehicleId}`,
+        },
+        (payload: any) => {
+          const updated = payload.new as {
+            id: number;
+            eta: number | null;
+            status: string;
+          };
+          if (!updated.id) return;
+          setOptimizedOrders((prev) =>
+            prev.map((o) =>
+              o.id === updated.id
+                ? {
+                    ...o,
+                    status: updated.status,
+                    etaMinutes: updated.eta ?? undefined,
+                  }
+                : o
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "Vehicle",
+          filter: `id=eq.${vehicleId}`,
+        },
+        (payload: any) => {
+          const updated = payload.new as {
+            id: number;
+            eta: number | null;
+            status: string;
+          };
+          if (!updated || updated.id !== vehicleId) return;
+          // Update local ETA state from vehicle table
+          if (updated.eta !== null && updated.eta !== undefined) {
+            setEta(updated.eta);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channelRef.current?.unsubscribe();
+      channelRef.current = null;
+    };
+  }, [isOpen, vehicleId]);
 
   const calculateOrderETAs = (
     orders: Array<{ id: number; address: string; status: string }>,
@@ -111,6 +182,22 @@ export default function VehicleRouteModal({
     }
   };
 
+  const saveVehicleETA = async (etaMinutes: number) => {
+    try {
+      const response = await fetch("/api/vehicles/update-eta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicleId, etaMinutes }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to save vehicle ETA:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error saving vehicle ETA:", error);
+    }
+  };
+
   const renderRoutePolylines = (legs: any[], map: any) => {
     legs.forEach((leg, legIndex) => {
       const isReturnLeg = legIndex === legs.length - 1;
@@ -147,10 +234,33 @@ export default function VehicleRouteModal({
   };
 
   useEffect(() => {
+    if (eta !== -1 && eta <= 0) {
+      const completeVehicle = async () => {
+        try {
+          await fetch("/api/vehicles/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vehicleId }),
+          });
+        } catch (error) {
+          console.error("Error completing vehicle:", error);
+        }
+      };
+      completeVehicle();
+    }
+  }, [eta, vehicleId]);
+
+  useEffect(() => {
     if (!isOpen || orders.length === 0) return;
 
     const initMap = async () => {
       try {
+        // Fetch existing data first
+        const vehicleDataResponse = await fetch(`/api/vehicles/${vehicleId}`);
+        const vehicleData = vehicleDataResponse.ok
+          ? await vehicleDataResponse.json()
+          : null;
+
         const [{ Map }, { PinElement }, routesLib] = await Promise.all([
           importLibrary("maps"),
           importLibrary("marker"),
@@ -170,6 +280,7 @@ export default function VehicleRouteModal({
           gestureHandling: "greedy",
         });
 
+        // First time: compute optimized routes
         const result = await Route.computeRoutes({
           origin: STORE_LOCATION,
           destination: STORE_LOCATION,
@@ -197,8 +308,33 @@ export default function VehicleRouteModal({
             route.optimizedIntermediateWaypointIndices
           );
 
-          setOptimizedOrders(reorderedOrders);
-          await saveOrderETAs(orderETAs);
+          // Check if we should use existing ETAs
+          let finalOrders = reorderedOrders;
+          let shouldSaveOrders = true;
+
+          if (vehicleData?.orders && Array.isArray(vehicleData.orders)) {
+            const hasExistingEtas = vehicleData.orders.some(
+              (o: any) => o.eta !== null
+            );
+            if (hasExistingEtas) {
+              shouldSaveOrders = false;
+              finalOrders = reorderedOrders.map((order) => {
+                const existing = vehicleData.orders.find(
+                  (o: any) => o.id === order.id
+                );
+                return existing && existing.eta !== null
+                  ? { ...order, etaMinutes: existing.eta }
+                  : order;
+              });
+            }
+          }
+
+          setOptimizedOrders(finalOrders);
+
+          if (shouldSaveOrders) {
+            await saveOrderETAs(orderETAs);
+          }
+
           renderRoutePolylines(route.legs, map);
         }
 
@@ -210,15 +346,29 @@ export default function VehicleRouteModal({
         map.fitBounds(route.viewport);
 
         if (route.durationMillis) {
-          setEta(Math.round(route.durationMillis / 60000));
+          let totalEta = Math.round(route.durationMillis / 60000);
+          let shouldSaveVehicle = true;
+
+          if (vehicleData?.eta !== null && vehicleData?.eta !== undefined) {
+            totalEta = vehicleData.eta;
+            shouldSaveVehicle = false;
+          }
+
+          setEta(totalEta);
+
+          if (shouldSaveVehicle) {
+            await saveVehicleETA(totalEta);
+          }
         }
+
+        // Mark routes as initialized to prevent recomputation
       } catch (error) {
         console.error("Error initializing map:", error);
       }
     };
 
     initMap();
-  }, [orders, isOpen]);
+  }, [orders, isOpen, vehicleId]);
 
   return (
     <Dialog open={isOpen} onOpenChange={changeIsOpen}>
@@ -281,7 +431,7 @@ export default function VehicleRouteModal({
                           <Badge
                             variant="outline"
                             className={
-                              order.status === "DELIVERED"
+                              order.status === "COMPLETE"
                                 ? "bg-green-100 text-green-800 border-green-200"
                                 : order.status === "IN_TRANSIT"
                                 ? "bg-blue-100 text-blue-800 border-blue-200"
