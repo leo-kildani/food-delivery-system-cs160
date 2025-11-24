@@ -135,4 +135,5 @@ model Vehicle {
   id     Int           @id @default(autoincrement())
   orders Order[]
   status VehicleStatus @default(STANDBY)
+  eta   Int?
 }

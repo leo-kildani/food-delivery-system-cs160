@@ -1,16 +1,13 @@
 "use client";
 import { Separator } from "@/components/ui/separator";
 import { Order } from "@prisma/client";
-import { useState, useActionState } from "react";
+import { useState, useActionState, useEffect } from "react";
 import { Truck, Package } from "lucide-react";
-import { deployVehicleAction, DeployState, VehicleWithOrders } from "./actions";
+import { deployVehicleAction, DeployState, VehicleWithOrders, PendingOrder} from "./actions";
 import { VehicleCard, OrderCard, DeployFeedback } from "./components";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
-type PendingOrder = {
-  order: Order;
-  totalPrice: number;
-  totalWeight: number;
-};
 
 export default function VehicleOrderList({
   vehicles,
@@ -26,6 +23,33 @@ export default function VehicleOrderList({
 
   const [deployVehicleState, setDeployVehicleState] = useState<DeployState>({});
 
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("vehicle-dashboard-updates")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Vehicle" },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Order" },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
+
   console.log(assignedOrders);
 
   // Calculate total weight for a vehicle
@@ -33,7 +57,11 @@ export default function VehicleOrderList({
     const orderIds = assignedOrders[vehicleId] || [];
     return orderIds.reduce((total, orderId) => {
       const order = pendingOrders.find((o) => o.order.id === orderId);
-      return total + (order?.totalWeight || 0);
+      // Only count weight if order exists and is not COMPLETE
+      if (order && order.order.status !== "COMPLETE") {
+        return total + order.totalWeight;
+      }
+      return total;
     }, 0);
   };
 
@@ -86,6 +114,13 @@ export default function VehicleOrderList({
                 changeDeployState={(state: DeployState) =>
                   setDeployVehicleState(state)
                 }
+                onClearPendingAssignments={() => {
+                  setAssignedOrders((prev) => {
+                    const updated = { ...prev };
+                    delete updated[vehicle.id];
+                    return updated;
+                  });
+                }}
               />
             );
           })}
@@ -103,6 +138,11 @@ export default function VehicleOrderList({
             </h3>
             <div className="grid gap-4">
               {pendingOrders.map((order) => {
+                // Skip COMPLETE orders
+                if (order.order.status === "COMPLETE") {
+                  return null;
+                }
+                
                 const isAssigned = assignedOrders[selectedVehicle]?.includes(
                   order.order.id
                 );

@@ -19,32 +19,29 @@ export async function POST(request: NextRequest) {
     );
   }
   try {
-    const { orderETAs } = (await request.json()) as {
-      orderETAs: Array<{ orderId: number; etaMinutes: number }>;
+    const { vehicleId, etaMinutes } = (await request.json()) as {
+      vehicleId: number;
+      etaMinutes: number;
     };
 
-    if (!orderETAs || !Array.isArray(orderETAs)) {
+    if (!vehicleId || etaMinutes === undefined) {
       return NextResponse.json(
         { error: "Invalid request body" },
         { status: 400 }
       );
     }
 
-    // Update all ETAs in a transaction
-    await prisma.$transaction(
-      orderETAs.map(({ orderId, etaMinutes }) =>
-        prisma.order.update({
-          where: { id: orderId },
-          data: { eta: etaMinutes },
-        })
-      )
-    );
+    // Update vehicle ETA
+    await prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { eta: etaMinutes },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error updating order ETAs:", error);
+    console.error("Error updating vehicle ETA:", error);
     return NextResponse.json(
-      { error: "Failed to update order ETAs" },
+      { error: "Failed to update vehicle ETA" },
       { status: 500 }
     );
   }
