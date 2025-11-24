@@ -4,6 +4,9 @@ import ShoppingCartButton from "./shopping-cart-button";
 import { getLoggedInUser } from "./actions";
 import { getCartItems } from "./checkout/actions";
 
+// Force dynamic rendering since we use cookies and database
+export const dynamic = 'force-dynamic';
+
 export default async function UserLayout({
   children,
 }: {

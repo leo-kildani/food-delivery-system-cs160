@@ -123,10 +123,6 @@ export interface CartItem {
 }
 
 // --- CHATBOT AI ---
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -141,6 +137,11 @@ export async function sendChatMessage(messages: ChatMessage[]) {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error("OpenAI API key not configured");
     }
+
+    // Lazy-load OpenAI client to avoid initialization during build
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     // Use the existing getActiveProducts function
     const products = await getActiveProducts();

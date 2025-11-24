@@ -5,6 +5,9 @@ import { getLoggedInUser } from "@/app/(user)/actions";
 import { getCartItems } from "../checkout/actions";
 import ChatWidget from "./ChatBot";
 
+// Force dynamic rendering since we use cookies and database
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   // Check if user is logged in
   const user = await getLoggedInUser();
