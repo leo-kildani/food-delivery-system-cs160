@@ -25,6 +25,13 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       //ALL Image Configurations
+
+      {
+        protocol: "https",
+        hostname: "einaglkpeyyoqnaupzqr.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/product-images/**",
+      },
       // Pexels
       {
         protocol: "https",
@@ -33,24 +40,23 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'simmerandsage.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "simmerandsage.com",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'plus.unsplash.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "plus.unsplash.com",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'www.gourmetfoodstore.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "www.gourmetfoodstore.com",
+        port: "",
+        pathname: "/**",
       },
-
     ],
   },
 };
