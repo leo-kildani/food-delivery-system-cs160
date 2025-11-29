@@ -24,7 +24,7 @@ interface VehicleRouteModalProps {
     address: string;
     status: string;
   }>;
-  onVehicleReset?: () => void; 
+  onVehicleReset?: () => void;
 }
 
 interface OrderWithETA {
@@ -44,14 +44,14 @@ export default function VehicleRouteModal({
   // map and order states/refs
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
-  const [eta, setEta] = useState<number>(-1);
+  const [eta, setEta] = useState<number | null>(null); // setting it to 1 to avoid immediate completion
   const [optimizedOrders, setOptimizedOrders] = useState<OrderWithETA[]>([]);
-
+  const routeStartedRef = useRef(false);
   // supabase refs
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const channelRef = useRef<any>(null);
 
-  // Initialize Google Maps API options once
+  // 1. One-time Google Maps options init
   useEffect(() => {
     if (!mapInit.current) {
       setOptions({
@@ -62,6 +62,144 @@ export default function VehicleRouteModal({
     }
   }, []);
 
+  // 2. Map + route initialization (depends on isOpen/orders)
+  useEffect(() => {
+    if (!isOpen || orders.length === 0) return;
+
+    // Only compute route for active (non-complete) orders
+    const activeOrders = orders.filter((o) => o.status !== "COMPLETE");
+    if (activeOrders.length === 0) {
+      // If no active orders, keep showing previously completed ones
+      return;
+    }
+
+    const initMap = async () => {
+      try {
+        // Fetch existing data first
+        const vehicleDataResponse = await fetch(`/api/vehicles/${vehicleId}`);
+        const vehicleData = vehicleDataResponse.ok
+          ? await vehicleDataResponse.json()
+          : null;
+
+        const [{ Map }, { PinElement }, routesLib] = await Promise.all([
+          importLibrary("maps"),
+          importLibrary("marker"),
+          importLibrary("routes"),
+        ]);
+        // @ts-ignore - Route class exists but not in type definitions
+        const { Route } = routesLib;
+
+        if (!mapRef.current) return;
+
+        const map = new Map(mapRef.current, {
+          center: STORE_LOCATION,
+          zoom: 10,
+          mapId: "ADDR",
+          disableDefaultUI: true,
+          zoomControl: true,
+          gestureHandling: "greedy",
+        });
+
+        // First time: compute optimized routes with active orders only
+        const result = await Route.computeRoutes({
+          origin: STORE_LOCATION,
+          destination: STORE_LOCATION,
+          travelMode: "DRIVING",
+          intermediates: activeOrders.map((order) => ({
+            location: order.address,
+            vehicleStopover: true,
+          })),
+          optimizeWaypointOrder: true,
+          computeAlternativeRoutes: false,
+          fields: ["*"],
+        });
+
+        if (!result?.routes?.[0]) {
+          console.error("No routes found");
+          return;
+        }
+
+        const route = result.routes[0];
+
+        if (route.legs?.length) {
+          const { reorderedOrders, orderETAs } = calculateOrderETAs(
+            activeOrders,
+            route.legs,
+            route.optimizedIntermediateWaypointIndices
+          );
+
+          // Check if we should use existing ETAs
+          let finalOrders = reorderedOrders;
+          let shouldSaveOrders = true;
+
+          if (vehicleData?.orders && Array.isArray(vehicleData.orders)) {
+            const hasExistingEtas = vehicleData.orders.some(
+              (o: any) => o.eta !== null
+            );
+            if (hasExistingEtas) {
+              shouldSaveOrders = false;
+              finalOrders = reorderedOrders.map((order) => {
+                const existing = vehicleData.orders.find(
+                  (o: any) => o.id === order.id
+                );
+                return existing && existing.eta !== null
+                  ? { ...order, etaMinutes: existing.eta }
+                  : order;
+              });
+            }
+          }
+
+          // Preserve previously completed orders that are no longer in active list
+          const previousCompleted = optimizedOrders.filter(
+            (o) =>
+              o.status === "COMPLETE" &&
+              !finalOrders.some((f) => f.id === o.id)
+          );
+
+          const mergedDisplayOrders = [...finalOrders, ...previousCompleted];
+
+          setOptimizedOrders(mergedDisplayOrders);
+
+          if (shouldSaveOrders) {
+            await saveOrderETAs(orderETAs);
+          }
+
+          renderRoutePolylines(route.legs, map);
+        }
+
+        await route.createWaypointAdvancedMarkers(
+          (defaultOptions: any, details: any) =>
+            createMarkerOptions(defaultOptions, details, PinElement, map)
+        );
+
+        map.fitBounds(route.viewport);
+
+        if (route.durationMillis) {
+          let totalEta = Math.round(route.durationMillis / 60000);
+          let shouldSaveVehicle = true;
+
+          if (vehicleData?.eta !== null && vehicleData?.eta !== undefined) {
+            totalEta = vehicleData.eta;
+            shouldSaveVehicle = false;
+          }
+
+          setEta(totalEta);
+          routeStartedRef.current = true;
+          if (shouldSaveVehicle) {
+            await saveVehicleETA(totalEta);
+          }
+        }
+
+        // Mark routes as initialized to prevent recomputation
+      } catch (error) {
+        console.error("Error initializing map:", error);
+      }
+    };
+
+    initMap();
+  }, [orders, isOpen, vehicleId]); // optimizedOrders intentionally not included to avoid recompute loops
+
+  // 3. Realtime Supabase subscription (after route init so optimizedOrders exists)
   useEffect(() => {
     if (!isOpen) return;
     if (!supabaseRef.current) supabaseRef.current = createClient();
@@ -126,6 +264,36 @@ export default function VehicleRouteModal({
       channelRef.current = null;
     };
   }, [isOpen, vehicleId]);
+
+  // 4. Watch ETA for completion
+  useEffect(() => {
+    if (!routeStartedRef.current) return;
+    if (eta === null) return;
+    if (eta <= 0) {
+      const completeVehicle = async () => {
+        try {
+          await fetch("/api/vehicles/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vehicleId }),
+          });
+        } catch (err) {
+          console.error("Error completing vehicle:", err);
+        }
+      };
+      completeVehicle();
+      onVehicleReset?.();
+      routeStartedRef.current = false;
+      setEta(null); // prevent re-trigger
+    }
+  }, [eta, vehicleId, onVehicleReset]);
+
+  // 5. Cleanup when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      routeStartedRef.current = false;
+    }
+  }, [isOpen]);
 
   const calculateOrderETAs = (
     orders: Array<{ id: number; address: string; status: string }>,
@@ -235,145 +403,6 @@ export default function VehicleRouteModal({
     };
   };
 
-  useEffect(() => {
-    if (eta !== -1 && eta <= 0) {
-      const completeVehicle = async () => {
-        try {
-          await fetch("/api/vehicles/complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ vehicleId }),
-          });
-        } catch (error) {
-          console.error("Error completing vehicle:", error);
-        }
-      };
-      completeVehicle();
-      onVehicleReset?.();
-
-    }
-  }, [eta, vehicleId]);
-
-  useEffect(() => {
-    if (!isOpen || orders.length === 0) return;
-
-    const initMap = async () => {
-      try {
-        // Fetch existing data first
-        const vehicleDataResponse = await fetch(`/api/vehicles/${vehicleId}`);
-        const vehicleData = vehicleDataResponse.ok
-          ? await vehicleDataResponse.json()
-          : null;
-
-        const [{ Map }, { PinElement }, routesLib] = await Promise.all([
-          importLibrary("maps"),
-          importLibrary("marker"),
-          importLibrary("routes"),
-        ]);
-        // @ts-ignore - Route class exists but not in type definitions
-        const { Route } = routesLib;
-
-        if (!mapRef.current) return;
-
-        const map = new Map(mapRef.current, {
-          center: STORE_LOCATION,
-          zoom: 10,
-          mapId: "ADDR",
-          disableDefaultUI: true,
-          zoomControl: true,
-          gestureHandling: "greedy",
-        });
-
-        // First time: compute optimized routes
-        const result = await Route.computeRoutes({
-          origin: STORE_LOCATION,
-          destination: STORE_LOCATION,
-          travelMode: "DRIVING",
-          intermediates: orders.map((order) => ({
-            location: order.address,
-            vehicleStopover: true,
-          })),
-          optimizeWaypointOrder: true,
-          computeAlternativeRoutes: false,
-          fields: ["*"],
-        });
-
-        if (!result?.routes?.[0]) {
-          console.error("No routes found");
-          return;
-        }
-
-        const route = result.routes[0];
-
-        if (route.legs?.length) {
-          const { reorderedOrders, orderETAs } = calculateOrderETAs(
-            orders,
-            route.legs,
-            route.optimizedIntermediateWaypointIndices
-          );
-
-          // Check if we should use existing ETAs
-          let finalOrders = reorderedOrders;
-          let shouldSaveOrders = true;
-
-          if (vehicleData?.orders && Array.isArray(vehicleData.orders)) {
-            const hasExistingEtas = vehicleData.orders.some(
-              (o: any) => o.eta !== null
-            );
-            if (hasExistingEtas) {
-              shouldSaveOrders = false;
-              finalOrders = reorderedOrders.map((order) => {
-                const existing = vehicleData.orders.find(
-                  (o: any) => o.id === order.id
-                );
-                return existing && existing.eta !== null
-                  ? { ...order, etaMinutes: existing.eta }
-                  : order;
-              });
-            }
-          }
-
-          setOptimizedOrders(finalOrders);
-
-          if (shouldSaveOrders) {
-            await saveOrderETAs(orderETAs);
-          }
-
-          renderRoutePolylines(route.legs, map);
-        }
-
-        await route.createWaypointAdvancedMarkers(
-          (defaultOptions: any, details: any) =>
-            createMarkerOptions(defaultOptions, details, PinElement, map)
-        );
-
-        map.fitBounds(route.viewport);
-
-        if (route.durationMillis) {
-          let totalEta = Math.round(route.durationMillis / 60000);
-          let shouldSaveVehicle = true;
-
-          if (vehicleData?.eta !== null && vehicleData?.eta !== undefined) {
-            totalEta = vehicleData.eta;
-            shouldSaveVehicle = false;
-          }
-
-          setEta(totalEta);
-
-          if (shouldSaveVehicle) {
-            await saveVehicleETA(totalEta);
-          }
-        }
-
-        // Mark routes as initialized to prevent recomputation
-      } catch (error) {
-        console.error("Error initializing map:", error);
-      }
-    };
-
-    initMap();
-  }, [orders, isOpen, vehicleId]);
-
   return (
     <Dialog open={isOpen} onOpenChange={changeIsOpen}>
       <DialogContent className="max-w-3xl max-h-[90vh]">
@@ -470,7 +499,7 @@ export default function VehicleRouteModal({
             </div>
 
             {/* ETA Display */}
-            {eta > 0 && (
+            {eta !== undefined && eta > 0 && (
               <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                 <div className="flex-shrink-0">
                   <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">

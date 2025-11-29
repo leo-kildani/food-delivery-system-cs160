@@ -54,7 +54,7 @@ export function VehicleCard({
 
   // Keep local state in sync when parent passes new vehicle (e.g. after revalidation)
   useEffect(() => {
-    console.log("VehicleCard received new vehicle prop:", vehicle);
+    // console.log("VehicleCard received new vehicle prop:", vehicle);
     // Filter out COMPLETE orders from the vehicle
     const activeOrders = vehicle.orders.filter(order => order.status !== "COMPLETE");
     const activeOrderWeight = activeOrders.reduce((total, order) => {

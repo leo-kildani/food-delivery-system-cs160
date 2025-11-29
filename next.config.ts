@@ -50,6 +50,18 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'einaglkpeyyoqnaupzqr.supabase.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.istockphoto.com',
+        port: '',
+        pathname: '/**',
+      },
 
     ],
   },
