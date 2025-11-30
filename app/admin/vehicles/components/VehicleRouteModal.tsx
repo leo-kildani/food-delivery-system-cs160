@@ -283,10 +283,6 @@ export default function VehicleRouteModal({
           activeOrders.map((order) => ({ id: order.id, address: order.address })),
           true
         );
-        if (!route) {
-          console.error("No routes found");
-          return;
-        }
 
         // Handle ETAs based on route legs
         if (route.legs?.length) {
