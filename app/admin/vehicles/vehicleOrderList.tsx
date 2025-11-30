@@ -50,7 +50,6 @@ export default function VehicleOrderList({
     };
   }, [router]);
 
-  console.log(assignedOrders);
 
   // Calculate total weight for a vehicle
   const getVehicleTotalWeight = (vehicleId: number): number => {

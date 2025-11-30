@@ -82,6 +82,9 @@ export async function signUpAction(
   });
 
   if (error) {
+    if (error.message?.toLowerCase().includes("already registered")) {
+      return { formError: "An account with this email already exists" };
+    }
     return { formError: "Creating user failed" };
   }
 
