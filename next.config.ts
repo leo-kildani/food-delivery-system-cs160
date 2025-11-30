@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
       // Pexels
       {
         protocol: "https",
+        hostname: "einaglkpeyyoqnaupzqr.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/product-images/products/**",
+      },
+      {
+        protocol: "https",
         hostname: "images.pexels.com",
         port: "",
         pathname: "/**",
