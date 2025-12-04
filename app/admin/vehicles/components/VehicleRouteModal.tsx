@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { STORE_LOCATION } from "@/lib/constants";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 interface VehicleRouteModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ interface VehicleRouteModalProps {
     address: string;
     status: string;
   }>;
-  onVehicleReset?: () => void; 
+  onVehicleReset?: () => void;
 }
 
 interface OrderWithETA {
@@ -44,15 +45,22 @@ export default function VehicleRouteModal({
   // map and order states/refs
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
-  const [eta, setEta] = useState<number>(-1);
+  const [eta, setEta] = useState<number | null>(null); // init to null; set to actual ETA
   const [optimizedOrders, setOptimizedOrders] = useState<OrderWithETA[]>([]);
-
+  const routeStartedRef = useRef(false);
   // supabase refs
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const channelRef = useRef<any>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const routeSignatureRef = useRef<string>("");
+  const pendingCompletedRenderRef = useRef<OrderWithETA[] | null>(null);
+  // Store references to map overlays for cleanup
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
-  // Initialize Google Maps API options once
+  // 1. One-time Google Maps options init
   useEffect(() => {
+    console.log("VehicleRouteModal map options init");
     if (!mapInit.current) {
       setOptions({
         key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -62,6 +70,341 @@ export default function VehicleRouteModal({
     }
   }, []);
 
+  // Completed order caching (localStorage)
+  const getCacheKey = (vid: number) => `vehicle:${vid}:completedOrders`;
+  const loadCachedCompleted = () => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(getCacheKey(vehicleId));
+      return raw ? (JSON.parse(raw) as OrderWithETA[]) : [];
+    } catch {
+      return [];
+    }
+  };
+  const saveCompletedOrder = (order: OrderWithETA) => {
+    if (typeof window === "undefined") return;
+    try {
+      const existing = loadCachedCompleted();
+      if (existing.some((o) => o.id === order.id)) return;
+      const next = [...existing, { ...order, status: "COMPLETE" }];
+      window.localStorage.setItem(getCacheKey(vehicleId), JSON.stringify(next));
+    } catch {}
+  };
+  const mergeDistinctById = (
+    primary: OrderWithETA[],
+    secondary: OrderWithETA[]
+  ) => {
+    const seen = new Set(primary.map((o) => o.id));
+    return [...primary, ...secondary.filter((o) => !seen.has(o.id))];
+  };
+  // NEW: clear cached completed orders for this vehicle
+  const clearCachedCompleted = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(getCacheKey(vehicleId));
+    } catch {}
+  };
+
+  // Shared: clear previous map overlays
+  const clearMapOverlays = () => {
+    // Remove all polylines
+    polylinesRef.current.forEach((polyline) => {
+      polyline.setMap(null);
+    });
+    polylinesRef.current = [];
+
+    // Remove all markers
+    markersRef.current.forEach((marker) => {
+      marker.map = null;
+    });
+    markersRef.current = [];
+  };
+
+  // Shared: ensure map is ready
+  const ensureMap = async () => {
+    if (!mapRef.current) return;
+    if (!mapInstanceRef.current) {
+      const [{ Map }] = await Promise.all([
+        importLibrary("maps"),
+        importLibrary("marker"),
+        importLibrary("routes"),
+      ]);
+      mapInstanceRef.current = new Map(mapRef.current, {
+        center: STORE_LOCATION,
+        zoom: 10,
+        mapId: "ADDR",
+        disableDefaultUI: true,
+        zoomControl: true,
+        gestureHandling: "greedy",
+      });
+      // Nudge the map to paint
+      mapInstanceRef.current.setCenter(STORE_LOCATION);
+    }
+    return mapInstanceRef.current;
+  };
+
+  // Shared: marker content builder using order arrays
+  const createMarkerOptionsForOrders = (
+    defaultOptions: any,
+    details: any,
+    PinElement: any,
+    map: google.maps.Map,
+    orders: Array<{ id: number; address: string }>
+  ) => {
+    const { index, totalMarkers } = details;
+    const isStore = index === 0 || index === totalMarkers - 1;
+    const orderIdx = index - 1;
+    const order = orders[orderIdx];
+    return {
+      ...defaultOptions,
+      map,
+      content: new PinElement({
+        glyphText: isStore ? "Store" : order ? `#${order.id}` : String(index),
+        glyphColor: "white",
+        background: isStore ? "green" : "blue",
+        borderColor: isStore ? "green" : "blue",
+      }).element,
+    };
+  };
+
+  // Shared: compute route, draw polylines, add markers, fit bounds
+  const computeAndRenderRouteForOrders = async (
+    ordersArray: Array<{ id: number; address: string }>,
+    optimize: boolean
+  ) => {
+    if (!ordersArray.length) return null;
+
+    const map = await ensureMap();
+    if (!map) return null;
+
+    // Clear previous overlays before rendering new route
+    clearMapOverlays();
+
+    const [{ PinElement }, routesLib] = await Promise.all([
+      importLibrary("marker"),
+      importLibrary("routes"),
+    ]);
+    // @ts-ignore
+    const { Route } = routesLib;
+
+    const result = await Route.computeRoutes({
+      origin: STORE_LOCATION,
+      destination: STORE_LOCATION,
+      travelMode: "DRIVING",
+      intermediates: ordersArray.map((o) => ({
+        location: o.address,
+        vehicleStopover: true,
+      })),
+      optimizeWaypointOrder: optimize,
+      computeAlternativeRoutes: false,
+      fields: ["*"],
+    });
+
+    const route = result?.routes?.[0];
+    if (!route) return null;
+
+    // Draw polylines
+    if (route.legs?.length) {
+      renderRoutePolylines(route.legs, map);
+    }
+
+    // Add markers using shared builder and store them in the ref
+    const markers = await route.createWaypointAdvancedMarkers(
+      (defaultOptions: any, details: any) =>
+        createMarkerOptionsForOrders(
+          defaultOptions,
+          details,
+          PinElement,
+          map,
+          ordersArray
+        )
+    );
+
+    // Store markers for later cleanup
+    if (markers && Array.isArray(markers)) {
+      markersRef.current = markers;
+    }
+
+    if (route.viewport) {
+      map.fitBounds(route.viewport);
+    }
+
+    return route;
+  };
+
+  // Defer completed markers until the map container has a non-zero size
+  useEffect(() => {
+    if (!isOpen || !mapRef.current) return;
+
+    const el = mapRef.current;
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      const hasSize = rect && rect.width > 0 && rect.height > 0;
+      if (hasSize && pendingCompletedRenderRef.current) {
+        const completed = pendingCompletedRenderRef.current;
+        pendingCompletedRenderRef.current = null;
+        computeAndRenderRouteForOrders(
+          completed.map((o) => ({ id: o.id, address: o.address })),
+          false
+        );
+      }
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isOpen]);
+
+  // 2. Map + route initialization (depends on isOpen/orders)
+  useEffect(() => {
+    console.log("use effect map + route init");
+    if (!isOpen) return;
+
+    const cachedCompleted = loadCachedCompleted();
+    const activeOrders = orders.filter((o) => o.status !== "COMPLETE");
+
+    const renderCompletedMarkers = async (completed: OrderWithETA[]) => {
+      if (!completed.length) return;
+      console.log("Rendering completed markers for orders:", completed);
+
+      // If container has no size yet, defer
+      const el = mapRef.current;
+      const hasSize =
+        !!el &&
+        el.getBoundingClientRect().width > 0 &&
+        el.getBoundingClientRect().height > 0;
+
+      if (!hasSize) {
+        pendingCompletedRenderRef.current = completed;
+        await ensureMap(); // prepare instance
+        return;
+      }
+
+      await computeAndRenderRouteForOrders(
+        completed.map((o) => ({ id: o.id, address: o.address })),
+        false // preserve completion order
+      );
+    };
+
+    console.log(
+      "orders length, active orders length: ",
+      orders.length,
+      activeOrders.length
+    );
+    // If no incoming orders, still show cached completed with a map
+    if (orders.length === 0 || activeOrders.length === 0) {
+      // Render cached completed list
+      if (cachedCompleted.length) setOptimizedOrders(cachedCompleted);
+      // Ensure map visible with completed markers
+      renderCompletedMarkers(cachedCompleted);
+      return;
+    }
+
+    const signature = activeOrders.map((o) => `${o.id}:${o.status}`).join("|");
+    if (signature === routeSignatureRef.current) return;
+    routeSignatureRef.current = signature;
+
+    const initMap = async () => {
+      try {
+        // Fetch existing data first
+        const vehicleDataResponse = await fetch(`/api/vehicles/${vehicleId}`);
+        const vehicleData = vehicleDataResponse.ok
+          ? await vehicleDataResponse.json()
+          : null;
+
+        await ensureMap();
+
+        // Compute and render route for active orders (optimized)
+        const route = await computeAndRenderRouteForOrders(
+          activeOrders.map((order) => ({
+            id: order.id,
+            address: order.address,
+          })),
+          true
+        );
+
+        if (!route) return;
+
+        // Handle ETAs based on route legs
+        if (route.legs?.length) {
+          const { reorderedOrders, orderETAs } = calculateOrderETAs(
+            activeOrders,
+            route.legs,
+            route.optimizedIntermediateWaypointIndices
+          );
+
+          // Check if we should use existing ETAs
+          let finalOrders = reorderedOrders;
+          let shouldSaveOrders = true;
+          if (vehicleData?.orders && Array.isArray(vehicleData.orders)) {
+            const hasExistingEtas = vehicleData.orders.some(
+              (o: any) => o.eta !== null
+            );
+            if (hasExistingEtas) {
+              shouldSaveOrders = false;
+              finalOrders = reorderedOrders.map((order) => {
+                const existing = vehicleData.orders.find(
+                  (o: any) => o.id === order.id
+                );
+                return existing && existing.eta !== null
+                  ? { ...order, etaMinutes: existing.eta }
+                  : order;
+              });
+            }
+          }
+
+          // Merge with cached completed orders (dedupe)
+          const mergedDisplayOrders = mergeDistinctById(
+            finalOrders,
+            cachedCompleted
+          );
+
+          // Only set if changed (shallow id/status/etaMinutes compare)
+          const changed =
+            mergedDisplayOrders.length !== optimizedOrders.length ||
+            mergedDisplayOrders.some((o, i) => {
+              const p = optimizedOrders[i];
+              return (
+                !p ||
+                p.id !== o.id ||
+                p.status !== o.status ||
+                p.etaMinutes !== o.etaMinutes
+              );
+            });
+
+          if (changed) setOptimizedOrders(mergedDisplayOrders);
+
+          if (shouldSaveOrders) {
+            await saveOrderETAs(orderETAs);
+          }
+        }
+
+        if (route.viewport) {
+          mapInstanceRef.current?.fitBounds(route.viewport);
+        }
+
+        if (route.durationMillis) {
+          let totalEta = Math.round(route.durationMillis / 60000);
+          let shouldSaveVehicle = true;
+          if (vehicleData?.eta !== null && vehicleData?.eta !== undefined) {
+            totalEta = Number(vehicleData.eta);
+            shouldSaveVehicle = false;
+          }
+          console.log("[VehicleRouteModal] setEta from map init:", totalEta);
+          setEta(totalEta);
+          routeStartedRef.current = true;
+          if (shouldSaveVehicle) {
+            await saveVehicleETA(totalEta);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing map:", error);
+      }
+    };
+
+    initMap();
+  }, [orders, isOpen, vehicleId]); // optimizedOrders intentionally omitted
+
+  // 3. Realtime Supabase subscription (after route init so optimizedOrders exists)
   useEffect(() => {
     if (!isOpen) return;
     if (!supabaseRef.current) supabaseRef.current = createClient();
@@ -85,17 +428,31 @@ export default function VehicleRouteModal({
             status: string;
           };
           if (!updated.id) return;
-          setOptimizedOrders((prev) =>
-            prev.map((o) =>
-              o.id === updated.id
-                ? {
-                    ...o,
-                    status: updated.status,
-                    etaMinutes: updated.eta ?? undefined,
-                  }
-                : o
-            )
-          );
+          setOptimizedOrders((prev) => {
+            let changed = false;
+            const next = prev.map((o) => {
+              if (o.id === updated.id) {
+                // Use status from payload only; no manual override when eta === 0
+                const nextO = {
+                  ...o,
+                  status: updated.status,
+                  etaMinutes: updated.eta ?? undefined,
+                };
+                if (
+                  nextO.status !== o.status ||
+                  nextO.etaMinutes !== o.etaMinutes
+                )
+                  changed = true;
+                // Persist if just completed
+                if (nextO.status === "COMPLETE") {
+                  saveCompletedOrder(nextO);
+                }
+                return nextO;
+              }
+              return o;
+            });
+            return changed ? next : prev;
+          });
         }
       )
       .on(
@@ -115,7 +472,23 @@ export default function VehicleRouteModal({
           if (!updated || updated.id !== vehicleId) return;
           // Update local ETA state from vehicle table
           if (updated.eta !== null && updated.eta !== undefined) {
-            setEta(updated.eta);
+            const nextEta = Number(updated.eta);
+            console.log(
+              "[VehicleRouteModal] setEta from subscription:",
+              nextEta,
+              "status:",
+              updated.status
+            );
+            setEta(nextEta);
+          }
+          // Keep routeStartedRef aligned with vehicle status
+          if (updated.status === "IN_TRANSIT") {
+            routeStartedRef.current = true;
+          } else if (
+            updated.status === "STANDBY" ||
+            updated.status === "COMPLETE"
+          ) {
+            routeStartedRef.current = false;
           }
         }
       )
@@ -126,6 +499,50 @@ export default function VehicleRouteModal({
       channelRef.current = null;
     };
   }, [isOpen, vehicleId]);
+
+  // 4. Watch ETA for completion
+  useEffect(() => {
+    console.log(
+      "[VehicleRouteModal] completion effect evaluate. eta:",
+      eta,
+      "routeStarted:",
+      routeStartedRef.current
+    );
+    if (eta === null) return;
+    // Detect route completion: ETA reaches 0 while route is actively running
+    if (eta === 0 && routeStartedRef.current === true) {
+      console.log("[VehicleRouteModal] eta reached 0, triggering completion");
+      // Show toast before triggering reset/unmount
+      toast(`Vehicle #${vehicleId} completed route`, {
+        description: "Vehicle is now in standby mode.",
+      });
+      // Clear cached completed orders for this vehicle on reset
+      clearCachedCompleted();
+      onVehicleReset?.();
+      routeStartedRef.current = false;
+      setEta(null);
+    }
+  }, [eta, vehicleId, onVehicleReset]); // remove ref.current from deps
+
+  // 5. Cleanup when dialog closes
+  useEffect(() => {
+    console.log(
+      "modal has closed/opened ",
+      vehicleId,
+      isOpen,
+      routeStartedRef.current
+    );
+
+    if (!isOpen) {
+      routeStartedRef.current = false;
+      // Clear route signature to allow re-initialization on reopen
+      routeSignatureRef.current = "";
+      // Clear map overlays when closing modal
+      clearMapOverlays();
+      // Optional: also clear cache when closing modal
+      // clearCachedCompleted();
+    }
+  }, [isOpen]);
 
   const calculateOrderETAs = (
     orders: Array<{ id: number; address: string; status: string }>,
@@ -204,13 +621,16 @@ export default function VehicleRouteModal({
     legs.forEach((leg, legIndex) => {
       const isReturnLeg = legIndex === legs.length - 1;
 
-      new google.maps.Polyline({
+      const polyline = new google.maps.Polyline({
         path: leg.path,
         strokeColor: isReturnLeg ? "#FF0000" : "#4285F4",
         strokeOpacity: 1.0,
         strokeWeight: 5,
         map,
       });
+
+      // Store polyline for later cleanup
+      polylinesRef.current.push(polyline);
     });
   };
 
@@ -235,265 +655,128 @@ export default function VehicleRouteModal({
     };
   };
 
-  useEffect(() => {
-    if (eta !== -1 && eta <= 0) {
-      const completeVehicle = async () => {
-        try {
-          await fetch("/api/vehicles/complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ vehicleId }),
-          });
-        } catch (error) {
-          console.error("Error completing vehicle:", error);
-        }
-      };
-      completeVehicle();
-      onVehicleReset?.();
-
-    }
-  }, [eta, vehicleId]);
-
-  useEffect(() => {
-    if (!isOpen || orders.length === 0) return;
-
-    const initMap = async () => {
-      try {
-        // Fetch existing data first
-        const vehicleDataResponse = await fetch(`/api/vehicles/${vehicleId}`);
-        const vehicleData = vehicleDataResponse.ok
-          ? await vehicleDataResponse.json()
-          : null;
-
-        const [{ Map }, { PinElement }, routesLib] = await Promise.all([
-          importLibrary("maps"),
-          importLibrary("marker"),
-          importLibrary("routes"),
-        ]);
-        // @ts-ignore - Route class exists but not in type definitions
-        const { Route } = routesLib;
-
-        if (!mapRef.current) return;
-
-        const map = new Map(mapRef.current, {
-          center: STORE_LOCATION,
-          zoom: 10,
-          mapId: "ADDR",
-          disableDefaultUI: true,
-          zoomControl: true,
-          gestureHandling: "greedy",
-        });
-
-        // First time: compute optimized routes
-        const result = await Route.computeRoutes({
-          origin: STORE_LOCATION,
-          destination: STORE_LOCATION,
-          travelMode: "DRIVING",
-          intermediates: orders.map((order) => ({
-            location: order.address,
-            vehicleStopover: true,
-          })),
-          optimizeWaypointOrder: true,
-          computeAlternativeRoutes: false,
-          fields: ["*"],
-        });
-
-        if (!result?.routes?.[0]) {
-          console.error("No routes found");
-          return;
-        }
-
-        const route = result.routes[0];
-
-        if (route.legs?.length) {
-          const { reorderedOrders, orderETAs } = calculateOrderETAs(
-            orders,
-            route.legs,
-            route.optimizedIntermediateWaypointIndices
-          );
-
-          // Check if we should use existing ETAs
-          let finalOrders = reorderedOrders;
-          let shouldSaveOrders = true;
-
-          if (vehicleData?.orders && Array.isArray(vehicleData.orders)) {
-            const hasExistingEtas = vehicleData.orders.some(
-              (o: any) => o.eta !== null
-            );
-            if (hasExistingEtas) {
-              shouldSaveOrders = false;
-              finalOrders = reorderedOrders.map((order) => {
-                const existing = vehicleData.orders.find(
-                  (o: any) => o.id === order.id
-                );
-                return existing && existing.eta !== null
-                  ? { ...order, etaMinutes: existing.eta }
-                  : order;
-              });
-            }
-          }
-
-          setOptimizedOrders(finalOrders);
-
-          if (shouldSaveOrders) {
-            await saveOrderETAs(orderETAs);
-          }
-
-          renderRoutePolylines(route.legs, map);
-        }
-
-        await route.createWaypointAdvancedMarkers(
-          (defaultOptions: any, details: any) =>
-            createMarkerOptions(defaultOptions, details, PinElement, map)
-        );
-
-        map.fitBounds(route.viewport);
-
-        if (route.durationMillis) {
-          let totalEta = Math.round(route.durationMillis / 60000);
-          let shouldSaveVehicle = true;
-
-          if (vehicleData?.eta !== null && vehicleData?.eta !== undefined) {
-            totalEta = vehicleData.eta;
-            shouldSaveVehicle = false;
-          }
-
-          setEta(totalEta);
-
-          if (shouldSaveVehicle) {
-            await saveVehicleETA(totalEta);
-          }
-        }
-
-        // Mark routes as initialized to prevent recomputation
-      } catch (error) {
-        console.error("Error initializing map:", error);
-      }
-    };
-
-    initMap();
-  }, [orders, isOpen, vehicleId]);
-
   return (
-    <Dialog open={isOpen} onOpenChange={changeIsOpen}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Navigation className="h-5 w-5" />
-            Vehicle #{vehicleId} Route
-          </DialogTitle>
-          <DialogDescription>
-            View the delivery route and order details for this vehicle
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={changeIsOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Navigation className="h-5 w-5" />
+              Vehicle #{vehicleId} Route
+            </DialogTitle>
+            <DialogDescription>
+              View the delivery route and order details for this vehicle
+            </DialogDescription>
+          </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)]">
-          <div className="space-y-4">
-            {/* Map Display */}
-            <div className="relative">
-              <div
-                ref={mapRef}
-                className="w-full h-[400px] rounded-lg border border-gray-200 bg-gray-100"
-              />
-              {!mapRef.current && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-lg">
-                  <div className="text-center">
-                    <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-500">Loading map...</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Order List */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                Delivery Stops ({optimizedOrders.length})
-              </h3>
-              {optimizedOrders.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No orders assigned to this vehicle</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {optimizedOrders.map((order, index) => (
-                    <div
-                      key={order.id}
-                      className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm">
-                          {index + 1}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="font-semibold text-sm">
-                            Order #{order.id}
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className={
-                              order.status === "COMPLETE"
-                                ? "bg-green-100 text-green-800 border-green-200"
-                                : order.status === "IN_TRANSIT"
-                                ? "bg-blue-100 text-blue-800 border-blue-200"
-                                : "bg-gray-100 text-gray-800 border-gray-200"
-                            }
-                          >
-                            {order.status.replace("_", " ")}
-                          </Badge>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-gray-600">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span className="break-words">{order.address}</span>
-                        </div>
-                        {order.etaMinutes !== undefined && (
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                            <Clock className="h-4 w-4 flex-shrink-0" />
-                            <span>
-                              ETA:{" "}
-                              {order.etaMinutes >= 60
-                                ? `${Math.floor(order.etaMinutes / 60)}h ${
-                                    order.etaMinutes % 60
-                                  }m`
-                                : `${order.etaMinutes} min`}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+          <ScrollArea className="max-h-[calc(90vh-120px)]">
+            <div className="space-y-4">
+              {/* Map Display */}
+              <div className="relative">
+                <div
+                  ref={mapRef}
+                  className="w-full h-[400px] rounded-lg border border-gray-200 bg-gray-100"
+                />
+                {!mapRef.current && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-lg">
+                    <div className="text-center">
+                      <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm text-gray-500">Loading map...</p>
                     </div>
-                  ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Order List */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                  Delivery Stops ({optimizedOrders.length})
+                </h3>
+                {optimizedOrders.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No orders assigned to this vehicle</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {optimizedOrders.map((order, index) => (
+                      <div
+                        key={order.id}
+                        className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm">
+                            {index + 1}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="font-semibold text-sm">
+                              Order #{order.id}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className={
+                                order.status === "COMPLETE"
+                                  ? "bg-green-100 text-green-800 border-green-200"
+                                  : order.status === "IN_TRANSIT"
+                                  ? "bg-blue-100 text-blue-800 border-blue-200"
+                                  : "bg-gray-100 text-gray-800 border-gray-200"
+                              }
+                            >
+                              {order.status.replace("_", " ")}
+                            </Badge>
+                          </div>
+                          <div className="flex items-start gap-2 text-sm text-gray-600">
+                            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            <span className="break-words">{order.address}</span>
+                          </div>
+                          {order.etaMinutes !== undefined && (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                              <Clock className="h-4 w-4 flex-shrink-0" />
+                              <span>
+                                ETA:{" "}
+                                {order.etaMinutes >= 60
+                                  ? `${Math.floor(order.etaMinutes / 60)}h ${
+                                      order.etaMinutes % 60
+                                    }m`
+                                  : `${order.etaMinutes} min`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ETA Display */}
+              {eta && eta > 0 && (
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">
+                      Total Estimated Time
+                    </p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      {eta} minutes
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Complete route with {optimizedOrders.length}{" "}
+                      {optimizedOrders.length === 1 ? "stop" : "stops"}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* ETA Display */}
-            {eta > 0 && (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">
-                    Total Estimated Time
-                  </p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {eta} minutes
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Complete route with {optimizedOrders.length}{" "}
-                    {optimizedOrders.length === 1 ? "stop" : "stops"}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
