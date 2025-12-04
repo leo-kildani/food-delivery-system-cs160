@@ -35,7 +35,7 @@ export function VehicleCard({
   assignedOrders,
   onSelect,
   changeDeployState,
-  onClearPendingAssignments
+  onClearPendingAssignments,
 }: VehicleCardProps) {
   // Deploy action state
   const [deployState, deployAction, isDeploying] = useActionState(
@@ -55,25 +55,41 @@ export function VehicleCard({
   // Local vehicle state so we can optimistically reset after route completion
   const [vehicleState, setVehicleState] = useState(vehicle);
 
-
-
   // Cache helpers (shared format with modal)
   const getCacheKey = (vid: number) => `vehicle:${vid}:completedOrders`;
   const loadCachedCompleted = (vid: number) => {
     if (typeof window === "undefined") return [];
     try {
       const raw = window.localStorage.getItem(getCacheKey(vid));
-      return raw ? JSON.parse(raw) as Array<{ id: number; address: string; status: string; etaMinutes?: number }> : [];
+      return raw
+        ? (JSON.parse(raw) as Array<{
+            id: number;
+            address: string;
+            status: string;
+            etaMinutes?: number;
+          }>)
+        : [];
     } catch {
       return [];
     }
   };
-  const saveCompletedOrder = (vid: number, order: { id: number; address: string; status: string; eta?: number | null }) => {
+  const saveCompletedOrder = (
+    vid: number,
+    order: { id: number; address: string; status: string; eta?: number | null }
+  ) => {
     if (typeof window === "undefined") return;
     try {
       const existing = loadCachedCompleted(vid);
       if (existing.some((o) => o.id === order.id)) return;
-      const next = [...existing, { id: order.id, address: order.address, status: "COMPLETE", etaMinutes: order.eta ?? undefined }];
+      const next = [
+        ...existing,
+        {
+          id: order.id,
+          address: order.address,
+          status: "COMPLETE",
+          etaMinutes: order.eta ?? undefined,
+        },
+      ];
       window.localStorage.setItem(getCacheKey(vid), JSON.stringify(next));
     } catch {}
   };
@@ -88,7 +104,10 @@ export function VehicleCard({
   // Detect completion transition to clear cache and toast
   const prevStatusRef = useRef(vehicleState.status);
   useEffect(() => {
-    if (prevStatusRef.current === "IN_TRANSIT" && vehicleState.status === "STANDBY") {
+    if (
+      prevStatusRef.current === "IN_TRANSIT" &&
+      vehicleState.status === "STANDBY"
+    ) {
       clearCachedCompleted(vehicleState.id);
       toast(`Vehicle #${vehicleState.id} completed route`, {
         description: "Vehicle returned to standby.",
@@ -105,7 +124,7 @@ export function VehicleCard({
     if (channelRef.current) return;
 
     const supabase = supabaseRef.current;
-    channelRef.current = supabase
+    const channel = supabase
       .channel(`vehicle-orders-persistent-${vehicle.id}`)
       .on(
         "postgres_changes",
@@ -128,15 +147,26 @@ export function VehicleCard({
           if (updated.status === "COMPLETE") {
             // address field can be toAddress in your card shape; fall back safely
             const addr = updated.toAddress ?? updated.address ?? "";
-            saveCompletedOrder(vehicle.id, { id: updated.id, address: addr, status: updated.status, eta: updated.eta });
+            saveCompletedOrder(vehicle.id, {
+              id: updated.id,
+              address: addr,
+              status: updated.status,
+              eta: updated.eta,
+            });
           }
         }
       )
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
-      channelRef.current?.unsubscribe();
-      channelRef.current = null;
+      // Only unsubscribe the channel created in this effect instance
+      channel.unsubscribe();
+      // Only clear the ref if it still points to this channel
+      if (channelRef.current === channel) {
+        channelRef.current = null;
+      }
     };
   }, [vehicle.id]);
 
@@ -144,7 +174,9 @@ export function VehicleCard({
   useEffect(() => {
     // console.log("VehicleCard received new vehicle prop:", vehicle);
     // Filter out COMPLETE orders from the vehicle
-    const activeOrders = vehicle.orders.filter(order => order.status !== "COMPLETE");
+    const activeOrders = vehicle.orders.filter(
+      (order) => order.status !== "COMPLETE"
+    );
     const activeOrderWeight = activeOrders.reduce((total, order) => {
       const orderWeight = order.orderItems.reduce((orderTotal, item) => {
         return orderTotal + item.weightPerUnit * item.quantity;
@@ -157,7 +189,6 @@ export function VehicleCard({
       assignedOrdersCount: activeOrders.length,
       totalAssignedWeight: activeOrderWeight,
     });
-    
   }, [vehicle, onClearPendingAssignments]);
 
   // Total weight = persistent weight + temporary weight
@@ -165,7 +196,8 @@ export function VehicleCard({
   const isOverloaded = totalWeight > 200;
 
   // Total orders = persistent orders + temporary orders
-  const totalOrderCount = vehicleState.assignedOrdersCount + tempAssignedOrderCount;
+  const totalOrderCount =
+    vehicleState.assignedOrdersCount + tempAssignedOrderCount;
 
   return (
     <Card
@@ -266,11 +298,12 @@ export function VehicleCard({
             )}
 
             {/* Show total if both exist */}
-            {vehicleState.assignedOrdersCount > 0 && tempAssignedOrderCount > 0 && (
-              <p className="text-gray-700 font-medium text-xs border-t pt-1 mt-1">
-                Total: {totalOrderCount} orders ({totalWeight.toFixed(1)} lbs)
-              </p>
-            )}
+            {vehicleState.assignedOrdersCount > 0 &&
+              tempAssignedOrderCount > 0 && (
+                <p className="text-gray-700 font-medium text-xs border-t pt-1 mt-1">
+                  Total: {totalOrderCount} orders ({totalWeight.toFixed(1)} lbs)
+                </p>
+              )}
           </div>
           <form action={deployAction}>
             <input type="hidden" name="vehicleId" value={vehicleState.id} />
@@ -325,8 +358,6 @@ export function VehicleCard({
           }}
         />
       )}
-      {/* Keep Toaster mounted persistently */}
-      <Toaster />
     </Card>
   );
 }

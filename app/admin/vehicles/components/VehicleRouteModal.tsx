@@ -45,7 +45,7 @@ export default function VehicleRouteModal({
   // map and order states/refs
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInit = useRef(false);
-  const [eta, setEta] = useState<number | null>(null); // setting it to 1 to avoid immediate completion
+  const [eta, setEta] = useState<number | null>(null); // init to null; set to actual ETA
   const [optimizedOrders, setOptimizedOrders] = useState<OrderWithETA[]>([]);
   const routeStartedRef = useRef(false);
   // supabase refs
@@ -54,6 +54,9 @@ export default function VehicleRouteModal({
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const routeSignatureRef = useRef<string>("");
   const pendingCompletedRenderRef = useRef<OrderWithETA[] | null>(null);
+  // Store references to map overlays for cleanup
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
   // 1. One-time Google Maps options init
   useEffect(() => {
@@ -100,6 +103,21 @@ export default function VehicleRouteModal({
     try {
       window.localStorage.removeItem(getCacheKey(vehicleId));
     } catch {}
+  };
+
+  // Shared: clear previous map overlays
+  const clearMapOverlays = () => {
+    // Remove all polylines
+    polylinesRef.current.forEach((polyline) => {
+      polyline.setMap(null);
+    });
+    polylinesRef.current = [];
+
+    // Remove all markers
+    markersRef.current.forEach((marker) => {
+      marker.map = null;
+    });
+    markersRef.current = [];
   };
 
   // Shared: ensure map is ready
@@ -159,6 +177,9 @@ export default function VehicleRouteModal({
     const map = await ensureMap();
     if (!map) return null;
 
+    // Clear previous overlays before rendering new route
+    clearMapOverlays();
+
     const [{ PinElement }, routesLib] = await Promise.all([
       importLibrary("marker"),
       importLibrary("routes"),
@@ -187,10 +208,22 @@ export default function VehicleRouteModal({
       renderRoutePolylines(route.legs, map);
     }
 
-    // Add markers using shared builder
-    await route.createWaypointAdvancedMarkers((defaultOptions: any, details: any) =>
-      createMarkerOptionsForOrders(defaultOptions, details, PinElement, map, ordersArray)
+    // Add markers using shared builder and store them in the ref
+    const markers = await route.createWaypointAdvancedMarkers(
+      (defaultOptions: any, details: any) =>
+        createMarkerOptionsForOrders(
+          defaultOptions,
+          details,
+          PinElement,
+          map,
+          ordersArray
+        )
     );
+
+    // Store markers for later cleanup
+    if (markers && Array.isArray(markers)) {
+      markersRef.current = markers;
+    }
 
     if (route.viewport) {
       map.fitBounds(route.viewport);
@@ -252,12 +285,15 @@ export default function VehicleRouteModal({
       );
     };
 
-    console.log("orders length, active orders length: ", orders.length, activeOrders.length);
+    console.log(
+      "orders length, active orders length: ",
+      orders.length,
+      activeOrders.length
+    );
     // If no incoming orders, still show cached completed with a map
     if (orders.length === 0 || activeOrders.length === 0) {
       // Render cached completed list
       if (cachedCompleted.length) setOptimizedOrders(cachedCompleted);
-      console.log("Optimized orders after setting cached completed:", optimizedOrders);
       // Ensure map visible with completed markers
       renderCompletedMarkers(cachedCompleted);
       return;
@@ -276,13 +312,17 @@ export default function VehicleRouteModal({
           : null;
 
         await ensureMap();
-        const map = mapInstanceRef.current;
 
         // Compute and render route for active orders (optimized)
         const route = await computeAndRenderRouteForOrders(
-          activeOrders.map((order) => ({ id: order.id, address: order.address })),
+          activeOrders.map((order) => ({
+            id: order.id,
+            address: order.address,
+          })),
           true
         );
+
+        if (!route) return;
 
         // Handle ETAs based on route legs
         if (route.legs?.length) {
@@ -313,14 +353,22 @@ export default function VehicleRouteModal({
           }
 
           // Merge with cached completed orders (dedupe)
-          const mergedDisplayOrders = mergeDistinctById(finalOrders, cachedCompleted);
+          const mergedDisplayOrders = mergeDistinctById(
+            finalOrders,
+            cachedCompleted
+          );
 
           // Only set if changed (shallow id/status/etaMinutes compare)
           const changed =
             mergedDisplayOrders.length !== optimizedOrders.length ||
             mergedDisplayOrders.some((o, i) => {
               const p = optimizedOrders[i];
-              return !p || p.id !== o.id || p.status !== o.status || p.etaMinutes !== o.etaMinutes;
+              return (
+                !p ||
+                p.id !== o.id ||
+                p.status !== o.status ||
+                p.etaMinutes !== o.etaMinutes
+              );
             });
 
           if (changed) setOptimizedOrders(mergedDisplayOrders);
@@ -342,7 +390,7 @@ export default function VehicleRouteModal({
             shouldSaveVehicle = false;
           }
           console.log("[VehicleRouteModal] setEta from map init:", totalEta);
-          setEta(prev => (prev === totalEta ? prev : totalEta));
+          setEta(totalEta);
           routeStartedRef.current = true;
           if (shouldSaveVehicle) {
             await saveVehicleETA(totalEta);
@@ -374,11 +422,15 @@ export default function VehicleRouteModal({
           filter: `VehicleId=eq.${vehicleId}`,
         },
         (payload: any) => {
-          const updated = payload.new as { id: number; eta: number | null; status: string };
+          const updated = payload.new as {
+            id: number;
+            eta: number | null;
+            status: string;
+          };
           if (!updated.id) return;
-          setOptimizedOrders(prev => {
+          setOptimizedOrders((prev) => {
             let changed = false;
-            const next = prev.map(o => {
+            const next = prev.map((o) => {
               if (o.id === updated.id) {
                 // Use status from payload only; no manual override when eta === 0
                 const nextO = {
@@ -386,7 +438,11 @@ export default function VehicleRouteModal({
                   status: updated.status,
                   etaMinutes: updated.eta ?? undefined,
                 };
-                if (nextO.status !== o.status || nextO.etaMinutes !== o.etaMinutes) changed = true;
+                if (
+                  nextO.status !== o.status ||
+                  nextO.etaMinutes !== o.etaMinutes
+                )
+                  changed = true;
                 // Persist if just completed
                 if (nextO.status === "COMPLETE") {
                   saveCompletedOrder(nextO);
@@ -417,13 +473,21 @@ export default function VehicleRouteModal({
           // Update local ETA state from vehicle table
           if (updated.eta !== null && updated.eta !== undefined) {
             const nextEta = Number(updated.eta);
-            console.log("[VehicleRouteModal] setEta from subscription:", nextEta, "status:", updated.status);
+            console.log(
+              "[VehicleRouteModal] setEta from subscription:",
+              nextEta,
+              "status:",
+              updated.status
+            );
             setEta(nextEta);
           }
           // Keep routeStartedRef aligned with vehicle status
           if (updated.status === "IN_TRANSIT") {
             routeStartedRef.current = true;
-          } else if (updated.status === "STANDBY" || updated.status === "COMPLETE") {
+          } else if (
+            updated.status === "STANDBY" ||
+            updated.status === "COMPLETE"
+          ) {
             routeStartedRef.current = false;
           }
         }
@@ -438,10 +502,16 @@ export default function VehicleRouteModal({
 
   // 4. Watch ETA for completion
   useEffect(() => {
-    console.log("[VehicleRouteModal] completion effect evaluate. eta:", eta, "routeStarted:", routeStartedRef.current);
+    console.log(
+      "[VehicleRouteModal] completion effect evaluate. eta:",
+      eta,
+      "routeStarted:",
+      routeStartedRef.current
+    );
     if (eta === null) return;
-    if (routeStartedRef.current == false) {
-      console.log("[VehicleRouteModal] HEREEE - eta <= 0, triggering completion");
+    // Detect route completion: ETA reaches 0 while route is actively running
+    if (eta === 0 && routeStartedRef.current === true) {
+      console.log("[VehicleRouteModal] eta reached 0, triggering completion");
       // Show toast before triggering reset/unmount
       toast(`Vehicle #${vehicleId} completed route`, {
         description: "Vehicle is now in standby mode.",
@@ -456,10 +526,19 @@ export default function VehicleRouteModal({
 
   // 5. Cleanup when dialog closes
   useEffect(() => {
-    console.log("modal has closed/opened ", vehicleId, isOpen, routeStartedRef.current);
+    console.log(
+      "modal has closed/opened ",
+      vehicleId,
+      isOpen,
+      routeStartedRef.current
+    );
 
     if (!isOpen) {
       routeStartedRef.current = false;
+      // Clear route signature to allow re-initialization on reopen
+      routeSignatureRef.current = "";
+      // Clear map overlays when closing modal
+      clearMapOverlays();
       // Optional: also clear cache when closing modal
       // clearCachedCompleted();
     }
@@ -542,13 +621,16 @@ export default function VehicleRouteModal({
     legs.forEach((leg, legIndex) => {
       const isReturnLeg = legIndex === legs.length - 1;
 
-      new google.maps.Polyline({
+      const polyline = new google.maps.Polyline({
         path: leg.path,
         strokeColor: isReturnLeg ? "#FF0000" : "#4285F4",
         strokeOpacity: 1.0,
         strokeWeight: 5,
         map,
       });
+
+      // Store polyline for later cleanup
+      polylinesRef.current.push(polyline);
     });
   };
 
@@ -670,7 +752,7 @@ export default function VehicleRouteModal({
               </div>
 
               {/* ETA Display */}
-              {eta !== undefined && eta > 0 && (
+              {eta && eta > 0 && (
                 <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
