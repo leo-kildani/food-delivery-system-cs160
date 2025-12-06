@@ -133,6 +133,36 @@ export default function SignUpForm() {
     };
   }, []);
 
+  //For Live DropDown Password Checker
+  const [password, setPassword] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const passwordRules = [
+    {
+      label: "At least 6 characters",
+      passed: password.length >= 6,
+    },
+    {
+      label: "72 characters or less",
+      passed: password.length <= 72,
+    },
+    {
+      label: "At least one lowercase letter",
+      passed: /[a-z]/.test(password),
+    },
+    {
+      label: "At least one uppercase letter",
+      passed: /[A-Z]/.test(password),
+    },
+    {
+      label: "At least one digit",
+      passed: /\d/.test(password),
+    },
+    {
+      label: "At least one symbol",
+      passed: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password),
+    },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 py-12 font-[Helvetica,Arial,sans-serif]">
       <div className="w-full max-w-xl">
@@ -240,13 +270,47 @@ export default function SignUpForm() {
                   >
                     Password
                   </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
-                  />
+
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
+                    />
+
+                    {/* Live password requirements dropdown */}
+                    {passwordFocused && (
+                      <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-md p-2 text-xs">
+                        <p className="font-semibold text-gray-700 mb-1">
+                          Password must include:
+                        </p>
+                        <ul className="space-y-1">
+                          {passwordRules.map((rule) => (
+                            <li
+                              key={rule.label}
+                              className={`flex items-center gap-2 ${
+                                rule.passed ? "text-green-600" : "text-gray-600"
+                              }`}
+                            >
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full ${
+                                  rule.passed ? "bg-green-500" : "bg-gray-300"
+                                }`}
+                              />
+                              {rule.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
                   {signUpState.fieldErrors?.password && (
                     <p className="text-red-600 text-xs flex items-center gap-1">
                       <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
@@ -254,7 +318,6 @@ export default function SignUpForm() {
                     </p>
                   )}
                 </div>
-
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="confirmPassword"
@@ -307,9 +370,11 @@ export default function SignUpForm() {
                   </p>
                 )}
               </div>
-              <Input type="hidden" 
-                name="address" 
-                value={selectedAddress || signUpState.values?.address || ""} />
+              <Input
+                type="hidden"
+                name="address"
+                value={selectedAddress || signUpState.values?.address || ""}
+              />
 
               <Button
                 type="submit"
