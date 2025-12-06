@@ -46,6 +46,12 @@ export type SignUpState = {
   ok?: boolean;
   formError?: string;
   fieldErrors?: Record<string, string[]>;
+  values?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    address?: string;
+  };
 };
 
 export async function signUpAction(
@@ -64,7 +70,16 @@ export async function signUpAction(
   const parsed = SignUpSchema.safeParse(input);
   // fields are valid
   if (!parsed.success) {
-    return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+    const { fieldErrors } = parsed.error.flatten(); 
+    return {
+      fieldErrors,
+      values: {
+        firstName: (input.firstName as string) ?? "",
+        lastName: (input.lastName as string) ?? "",
+        email: (input.email as string) ?? "",
+        address: (input.address as string) ?? "",
+      },
+    };
   }
 
   const parsedData = parsed.data;
@@ -82,15 +97,37 @@ export async function signUpAction(
   });
 
   if (error) {
+    const baseState: SignUpState = {
+      formError: "Creating user failed",
+      values: {
+        firstName: parsedData.firstName,
+        lastName: parsedData.lastName,
+        email: parsedData.email,
+        address: parsedData.address,
+      },
+    };
+
     if (error.message?.toLowerCase().includes("already registered")) {
-      return { formError: "An account with this email already exists" };
+      return {
+        ...baseState,
+        formError: "An account with this email already exists",
+      };
     }
-    return { formError: "Creating user failed" };
+
+    return baseState;
   }
 
   const authId = data.user?.id;
   if (!authId) {
-    return { formError: "Sign up did not return auth id" };
+    return {
+      formError: "Sign up did not return auth id",
+      values: {
+        firstName: parsedData.firstName,
+        lastName: parsedData.lastName,
+        email: parsedData.email,
+        address: parsedData.address,
+      },
+    };
   }
 
   // store user information in supabase

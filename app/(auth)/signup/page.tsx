@@ -13,6 +13,13 @@ import { setOptions } from "@googlemaps/js-api-loader";
 import { RADIUS_METERS, STORE_LOCATION } from "@/lib/constants";
 
 export default function SignUpForm() {
+  const initialState: SignUpState = {
+    ok: false,
+    formError: undefined,
+    fieldErrors: {},
+    values: {},
+  };
+
   const [signUpState, signUpFormAction, signUpIsPending] = useActionState(
     signUpAction,
     {} as SignUpState
@@ -163,6 +170,7 @@ export default function SignUpForm() {
                     placeholder="First Name"
                     type="text"
                     required
+                    defaultValue={signUpState.values?.firstName ?? ""}
                     className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.firstName && (
@@ -186,6 +194,7 @@ export default function SignUpForm() {
                     placeholder="Last Name"
                     type="text"
                     required
+                    defaultValue={signUpState.values?.lastName ?? ""}
                     className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                   />
                   {signUpState.fieldErrors?.lastName && (
@@ -211,6 +220,7 @@ export default function SignUpForm() {
                   placeholder="name@example.com"
                   type="email"
                   required
+                  defaultValue={signUpState.values?.email ?? ""}
                   className="h-9 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white text-sm"
                 />
                 {signUpState.fieldErrors?.email && (
@@ -297,7 +307,9 @@ export default function SignUpForm() {
                   </p>
                 )}
               </div>
-              <Input type="hidden" name="address" value={selectedAddress} />
+              <Input type="hidden" 
+                name="address" 
+                value={selectedAddress || signUpState.values?.address || ""} />
 
               <Button
                 type="submit"
