@@ -3,6 +3,7 @@
 import { Product } from "@prisma/client";
 import { getActiveProducts, getInactiveProducts } from "./actions";
 import AdminInventoryClient from "./admin-inventory-client";
+import { requireAdmin } from "../actions";
 
 const fixProductNumbers = (product: Product) => {
   return {
@@ -19,6 +20,7 @@ const fixProductNumbers = (product: Product) => {
 };
 
 export default async function AdminInventory() {
+  await requireAdmin();
   const activeProducts = await getActiveProducts();
   const inactiveProducts = await getInactiveProducts();
 

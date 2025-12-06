@@ -2,6 +2,7 @@ import Link from "next/link";
 import LogoutButton from "./logout-button";
 import { createClient } from "@/lib/supabase/server";
 import { House } from "lucide-react";
+import { requireAdmin } from "./actions";
 
 // Force dynamic rendering since we use cookies and database
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const adminUser = await requireAdmin();
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   const userRole = data.user?.user_metadata?.role;
