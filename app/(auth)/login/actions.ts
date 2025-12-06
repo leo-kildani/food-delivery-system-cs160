@@ -36,7 +36,26 @@ export async function loginAction(
   const {data, error} = await supabase.auth.signInWithPassword(
       {email: parsedData.email, password: parsedData.password})
   if (error) {
-    return {formError: 'Could not login'};
+    return {formError: 'Invalid Username or Password'};
+  }
+
+  const authUser = data.user;
+  if (!authUser) {
+    return { formError: 'Could not login' };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: {
+      authId: authUser.id,
+    },
+  });
+
+  if (!user) {
+    // User exists in Supabase Auth but not in your DB → sign them out + show error
+    await supabase.auth.signOut();
+    return {
+      formError: 'This account no longer exists. Please contact support or sign up again.',
+    };
   }
 
   redirect('/home')

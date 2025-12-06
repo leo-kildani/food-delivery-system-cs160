@@ -105,7 +105,7 @@ export default function LoginForm() {
                 {loginState.formError && (
                   <p className="text-red-600 text-sm flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-red-600"></span>
-                    Invalid Username / Password.
+                    {loginState.formError}
                   </p>
                 )}
               </div>
