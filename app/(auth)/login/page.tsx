@@ -4,22 +4,24 @@ import { Input } from "@/components/ui/input";
 import { useActionState, useState } from "react";
 import { loginAction, LoginState } from "./actions";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { ChevronRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginForm() {
+  const initialState: LoginState = {
+    ok: false,
+    formError: undefined,
+    fieldErrors: {},
+    values: {},
+  };
+
   const [loginState, loginFormAction, loginPending] = useActionState(
     loginAction,
     {} as LoginState
   );
+
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -57,6 +59,7 @@ export default function LoginForm() {
                   name="email"
                   placeholder="name@example.com"
                   type="email"
+                  defaultValue={loginState.values?.email ?? ""}
                   className="h-11 border-blue-200 focus:border-blue-600 focus:ring-blue-500 bg-white"
                 />
                 {loginState.fieldErrors?.email && (
@@ -67,6 +70,7 @@ export default function LoginForm() {
                 )}
               </div>
 
+              {/* Password Field */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label

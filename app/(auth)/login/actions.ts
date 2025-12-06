@@ -16,6 +16,9 @@ export type LoginState = {
   ok?: boolean;
   formError?: string;
   fieldErrors?: Record<string, string[]>;
+  values?: {
+    email?: string;
+  }
 };
 
 export async function loginAction(
@@ -27,7 +30,13 @@ export async function loginAction(
   const parsed = loginSchema.safeParse(input);
 
   if (!parsed.success) {
-    return {fieldErrors: z.flattenError(parsed.error).fieldErrors};
+    const { fieldErrors } = parsed.error.flatten(); 
+    return {
+      fieldErrors,
+      values: {
+        email: (input.email as string) ?? "",
+      },
+    };
   }
 
   const parsedData = parsed.data;
@@ -35,13 +44,24 @@ export async function loginAction(
 
   const {data, error} = await supabase.auth.signInWithPassword(
       {email: parsedData.email, password: parsedData.password})
+
   if (error) {
-    return {formError: 'Invalid Username or Password'};
+    return {
+      formError: 'Invalid Username or Password',
+      values: {
+        email: parsedData.email,   
+      },
+    };
   }
 
   const authUser = data.user;
   if (!authUser) {
-    return { formError: 'Could not login' };
+    return {
+      formError: 'Could not login',
+      values: {
+        email: parsedData.email,   
+      },
+    };
   }
 
   const user = await prisma.user.findUnique({
@@ -51,10 +71,13 @@ export async function loginAction(
   });
 
   if (!user) {
-    // User exists in Supabase Auth but not in your DB → sign them out + show error
     await supabase.auth.signOut();
     return {
-      formError: 'This account no longer exists. Please contact support or sign up again.',
+      formError:
+        'This account no longer exists.',
+      values: {
+        email: parsedData.email,  
+      },
     };
   }
 
