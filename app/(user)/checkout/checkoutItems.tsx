@@ -141,7 +141,7 @@ export default function CheckoutComponent({
       { itemsTotal: 0, totalWeight: 0 }
     );
 
-    const fee = totalWeight > 20 ? 10 : 0;
+    const fee = totalWeight >= 20 ? 10 : 0;
     return Number((itemsTotal + fee).toFixed(2));
   };
 

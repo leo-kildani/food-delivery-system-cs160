@@ -141,7 +141,7 @@ export async function checkoutAction(
       return { formError: "Order exceeds maximum allowed weight of 200 lbs" };
     }
 
-    const additionalFee = totalWeight > 20 ? 10 : 0;
+    const additionalFee = totalWeight >= 20 ? 10 : 0;
 
     // Create order and order items in a transaction, decrement stock, and remove cart items
     await prisma.$transaction(async (tx) => {

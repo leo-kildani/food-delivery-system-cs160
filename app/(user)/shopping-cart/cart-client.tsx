@@ -112,7 +112,7 @@ export default function ShoppingCartClient({
 
   // Calculate delivery fee and overweight condition
   let deliveryFee = 0;
-  if (totalCartWeight > 20) {
+  if (totalCartWeight >= 20) {
     deliveryFee = 10;
     totalCartCost += 10;
   }
@@ -288,7 +288,7 @@ export default function ShoppingCartClient({
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Delivery Fee: 
                     <br></br>
-                    <p className="text-[13px] text-gray-400 italic">A cart weight over 20lbs will have a $10 delievery fee.</p>
+                    <p className="text-[13px] text-gray-400 italic">A cart weight of 20lbs or more will have a $10 delievery fee.</p>
                     </span>
                   <span>${deliveryFee}</span>
                 </div>
