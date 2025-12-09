@@ -31,6 +31,17 @@ export default function StripePayment({
   selectedAddressId,
   disabled = false,
 }: StripePaymentProps) {
+  // Don't initialize Stripe Elements if amount is 0 or negative
+  if (totalAmount <= 0) {
+    return (
+      <div className="border-t border-gray-200 mt-6 pt-6">
+        <div className="flex items-center justify-center p-8 text-gray-500">
+          Add items to proceed with payment
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <Elements
