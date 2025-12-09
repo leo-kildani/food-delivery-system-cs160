@@ -53,6 +53,59 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // --- ROLE-BASED ACCESS CONTROL FOR /admin ---
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    // however you're storing it: adjust this line to match your setup
+    const role =
+      // common patterns – pick the one that matches your Supabase setup
+      // e.g. user.user_metadata.role = "ADMIN" | "EMPLOYEE"
+      (user as any)?.user_metadata?.role ??
+      (user as any)?.app_metadata?.role ??
+      (user as any)?.role;
+
+    // If somehow no role, treat as unauthorized
+    if (!role) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/home"; // or "/error" or "/login"
+      const redirectResponse = NextResponse.redirect(url);
+      for (const cookie of supabaseResponse.cookies.getAll()) {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+      }
+      return redirectResponse;
+    }
+
+    // EMPLOYEE restrictions:
+    // - block /admin/employees
+    // - block /admin/orders
+    if (role === "EMPL") {
+      const isEmployeesPage =
+        request.nextUrl.pathname.startsWith("/admin/employees");
+      const isOrdersPage = request.nextUrl.pathname.startsWith("/admin/orders");
+
+      if (isEmployeesPage || isOrdersPage) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/home"; // or some "not authorized" page
+        const redirectResponse = NextResponse.redirect(url);
+        for (const cookie of supabaseResponse.cookies.getAll()) {
+          redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+        }
+        return redirectResponse;
+      }
+    }
+
+    // If role is ADMIN, we let them through to any /admin route
+    // If role is something else, you can also block them:
+    if (role !== "ADMIN" && role !== "EMPL") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/home";
+      const redirectResponse = NextResponse.redirect(url);
+      for (const cookie of supabaseResponse.cookies.getAll()) {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+      }
+      return redirectResponse;
+    }
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

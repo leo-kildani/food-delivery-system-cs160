@@ -1,11 +1,9 @@
 "use server";
 
-import { requireAdmin } from "../actions";
 import { getActivity, getPopularProducts, getRecentOrders } from "./actions";
 import { SectionCards } from "./components/section-cards";
 
 export default async function AdminAnalytics() {
-  await requireAdmin();
 
   const recentActivity = await getActivity();
   const activeUsers = recentActivity.activeUsers;

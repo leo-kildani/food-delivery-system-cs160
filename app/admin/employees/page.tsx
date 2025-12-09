@@ -1,11 +1,9 @@
-import { requireAdmin } from "../actions";
 import { getEmployees } from "./actions";
 import AddEmployeeButton from "./add-employee-button";
 import { columns } from "./columns";
 import { DataTable } from "./data-table";
 
 export default async function AdminEmployees() {
-  await requireAdmin();
   const employees = await getEmployees();
 
   return (

@@ -48,7 +48,7 @@ export async function getCurrentUser() {
   return dbUser; // includes role: "USER" | "ADMIN"
 }
 
-export async function requireAdmin() {
+export async function requireAuthRole() {
   const user = await getCurrentUser();
 
   // Not logged in
@@ -57,7 +57,7 @@ export async function requireAdmin() {
   }
 
   // Logged in but not admin
-  if (user.role !== "ADMIN") {
+  if (user.role !== "ADMIN" && user.role !== "EMPL") {
     redirect("/home"); // or "/not-authorized"
   }
 
