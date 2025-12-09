@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { $Enums, Prisma, Product, ProductStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import z from "zod";
+import nextConfig from "@/next.config";
 
 export async function getActiveProducts(): Promise<Product[]> {
   return await prisma.product.findMany({
@@ -67,6 +68,18 @@ export async function restoreProduct(
   return { success: true };
 }
 
+const isAllowedRemoteUrl = (url: string): boolean => {
+  const allowedUrls = nextConfig.images?.remotePatterns?.map((pattern) => {
+    return `${pattern.protocol}://${pattern.hostname}${
+      pattern.port ? `:${pattern.port}` : ""
+    }${pattern.pathname?.replace("**", "")}`;
+  });
+  if (allowedUrls?.some((allowedUrl) => url.startsWith(allowedUrl))) {
+    return true;
+  }
+  return false;
+};
+
 const AddProductSchema = z.object({
   name: z.string().min(1, "Product Name is Required"),
   description: z.string().min(1, "Product Description is Required"),
@@ -88,8 +101,11 @@ const AddProductSchema = z.object({
   quantityOnHand: z.coerce.number().int({ error: "Must be an integer" }),
   imageUrl: z
     .url()
-    .regex(/.*[\.jpg|\.jpeg|\.png]/, {
-      error: "URL must end with a valid file extension (.jpg, .jpeg, .png",
+    .regex(/^.*\.(?:jpg|jpeg|png)$/, {
+      error: "URL must end with a valid file extension (.jpg, .jpeg, .png)",
+    })
+    .refine(isAllowedRemoteUrl, {
+      message: "URL must be from an allowed source",
     })
     .optional()
     .or(z.literal("", { error: "Must be a valid URL or blank" })),
@@ -99,6 +115,15 @@ export type AddProductState = {
   ok?: boolean;
   formError?: string;
   fieldErrors?: Record<string, string[]>;
+  values?: {
+    name?: string;
+    description?: string;
+    category?: $Enums.ProductCategory;
+    pricePerUnit?: string;
+    weightPerUnit?: string;
+    quantityOnHand?: string;
+    imageUrl?: string;
+  };
 };
 
 // Add Item Dialog
@@ -120,7 +145,10 @@ export async function addProductAction(
   const parsed = AddProductSchema.safeParse(input);
   // fields are valid check
   if (!parsed.success) {
-    return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+    return {
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+      values: input as AddProductState["values"],
+    };
   }
 
   const parsedData = parsed.data;
@@ -140,7 +168,7 @@ export async function addProductAction(
     });
   } catch (e) {
     console.log(e);
-    return { formError: "Error creating item" };
+    return { formError: "Error creating item in database" };
   }
   // Updates the table after adding item
   revalidatePath("/admin/inventory");
@@ -151,6 +179,15 @@ export type EditProductState = {
   ok?: boolean;
   formError?: string;
   fieldErrors?: Record<string, string[]>;
+  values?: {
+    name?: string;
+    description?: string;
+    category?: $Enums.ProductCategory;
+    pricePerUnit?: string;
+    weightPerUnit?: string;
+    quantityOnHand?: string;
+    imageUrl?: string;
+  };
 };
 
 // Edit Item Dialog
@@ -174,7 +211,10 @@ export async function editProductAction(
   const parsed = AddProductSchema.safeParse(input);
   // fields are valid check
   if (!parsed.success) {
-    return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+    return {
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+      values: input as EditProductState["values"],
+    };
   }
 
   const parsedData = parsed.data;
@@ -197,7 +237,7 @@ export async function editProductAction(
     });
   } catch (e) {
     console.log(e);
-    return { formError: "Error editing item" };
+    return { formError: "Error editing item in database" };
   }
   // Updates the table after editing item
   revalidatePath("/admin/inventory");

@@ -54,7 +54,7 @@ export function ProductCard({
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
-              alt={product.name}
+              alt={product.name + " failed to load"}
               fill
               // Keep cover; align to center (or tweak with object-center/top/etc.)
               className="object-cover"
