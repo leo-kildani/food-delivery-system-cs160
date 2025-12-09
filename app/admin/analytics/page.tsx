@@ -4,6 +4,7 @@ import { getActivity, getPopularProducts, getRecentOrders } from "./actions";
 import { SectionCards } from "./components/section-cards";
 
 export default async function AdminAnalytics() {
+
   const recentActivity = await getActivity();
   const activeUsers = recentActivity.activeUsers;
   const activeOrders = recentActivity.activeOrders;

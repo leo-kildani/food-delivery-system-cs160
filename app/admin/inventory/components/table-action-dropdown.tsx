@@ -42,8 +42,20 @@ export default function TableActionDropdown(prop: TableActionProp) {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
 
   const boundEditProductAction = editProductAction.bind(null, productRow.id);
+  const initialState: EditProductState = {
+    ok: false,
+    formError: undefined,
+    fieldErrors: {},
+    values: {},
+  };
+  const resetInitialState = () => {
+    editProductState.ok = false;
+    editProductState.formError = undefined;
+    editProductState.fieldErrors = {};
+    editProductState.values = {};
+  };
   const [editProductState, editProductFormAction, editProductIsPending] =
-    useActionState(boundEditProductAction, {} as EditProductState);
+    useActionState(boundEditProductAction, initialState);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   useEffect(() => {
@@ -53,6 +65,13 @@ export default function TableActionDropdown(prop: TableActionProp) {
       editProductState.ok = false;
     }
   }, [editProductState?.ok]);
+
+  useEffect(() => {
+    if (!showEditDialog) {
+      // reset state when dialog is opened
+      resetInitialState();
+    }
+  });
 
   // See if we're actually getting the right information
   // console.log(rowProduct);
@@ -104,7 +123,9 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="name"
                   name="name"
-                  defaultValue={productRow.name}
+                  defaultValue={
+                    editProductState.values?.name || productRow.name
+                  }
                   type="text"
                 />
                 {editProductState.fieldErrors?.name && (
@@ -120,7 +141,10 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="description"
                   name="description"
-                  defaultValue={productRow.description}
+                  defaultValue={
+                    editProductState.values?.description ||
+                    productRow.description
+                  }
                   type="text"
                 />
                 {editProductState.fieldErrors?.description && (
@@ -136,7 +160,9 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <select
                   id="category"
                   name="category"
-                  defaultValue={productRow.category}
+                  defaultValue={
+                    editProductState.values?.category || productRow.category
+                  }
                 >
                   {/* Default value (existing category)*/}
                   <option
@@ -177,7 +203,10 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="pricePerUnit"
                   name="pricePerUnit"
-                  defaultValue={productRow.pricePerUnit.toFixed(2)}
+                  defaultValue={
+                    editProductState.values?.pricePerUnit ||
+                    productRow.pricePerUnit.toFixed(2)
+                  }
                   type="number"
                   min="0"
                   step="0.01"
@@ -195,7 +224,10 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="weightPerUnit"
                   name="weightPerUnit"
-                  defaultValue={productRow.weightPerUnit.toFixed(3)}
+                  defaultValue={
+                    editProductState.values?.weightPerUnit ||
+                    productRow.weightPerUnit.toFixed(3)
+                  }
                   type="number"
                   min="0"
                   step="0.001"
@@ -213,7 +245,10 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="quantityOnHand"
                   name="quantityOnHand"
-                  defaultValue={productRow.quantityOnHand}
+                  defaultValue={
+                    editProductState.values?.quantityOnHand ||
+                    productRow.quantityOnHand
+                  }
                   type="number"
                   min="0"
                 />
@@ -230,7 +265,11 @@ export default function TableActionDropdown(prop: TableActionProp) {
                 <Input
                   id="imageUrl"
                   name="imageUrl"
-                  defaultValue={productRow.imageUrl ?? ""}
+                  defaultValue={
+                    editProductState.values?.imageUrl ||
+                    productRow.imageUrl ||
+                    ""
+                  }
                   type="url"
                 />
                 {editProductState.fieldErrors?.imageUrl && (

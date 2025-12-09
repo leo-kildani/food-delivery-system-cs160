@@ -18,8 +18,20 @@ import { useActionState, useState, useEffect } from "react";
 import { ProductCategory } from "@prisma/client";
 
 export default function AddProductButton() {
+  const initialState: AddProductState = {
+    ok: false,
+    formError: undefined,
+    fieldErrors: {},
+    values: {},
+  };
+  const resetInitialState = () => {
+    addProductState.ok = false;
+    addProductState.formError = undefined;
+    addProductState.fieldErrors = {};
+    addProductState.values = {};
+  };
   const [addProductState, addProductFormAction, addProductIsPending] =
-    useActionState(addProductAction, {} as AddProductState);
+    useActionState(addProductAction, initialState);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -31,7 +43,7 @@ export default function AddProductButton() {
   useEffect(() => {
     if (!open) {
       // reset state when dialog is opened
-      addProductState.fieldErrors = {};
+      resetInitialState();
     }
   });
 
@@ -54,7 +66,13 @@ export default function AddProductButton() {
             {/* Name */}
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" placeholder="Apple" type="text" />
+              <Input
+                id="name"
+                name="name"
+                placeholder="Apple"
+                defaultValue={addProductState.values?.name || ""}
+                type="text"
+              />
               {addProductState.fieldErrors?.name && (
                 <div className="text-red-600 text-sm mt-1">
                   {addProductState.fieldErrors.name.join(", ")}
@@ -69,6 +87,7 @@ export default function AddProductButton() {
                 id="description"
                 name="description"
                 placeholder="A nice snack."
+                defaultValue={addProductState.values?.description || ""}
                 type="text"
               />
               {addProductState.fieldErrors?.description && (
@@ -106,6 +125,7 @@ export default function AddProductButton() {
                 id="pricePerUnit"
                 name="pricePerUnit"
                 placeholder="0.50"
+                defaultValue={addProductState.values?.pricePerUnit || ""}
                 type="number"
                 min="0"
                 step="0.01"
@@ -124,6 +144,7 @@ export default function AddProductButton() {
                 id="weightPerUnit"
                 name="weightPerUnit"
                 placeholder="0.200"
+                defaultValue={addProductState.values?.weightPerUnit || ""}
                 type="number"
                 min="0"
                 step="0.001"
@@ -142,6 +163,7 @@ export default function AddProductButton() {
                 id="quantityOnHand"
                 name="quantityOnHand"
                 placeholder="50"
+                defaultValue={addProductState.values?.quantityOnHand || ""}
                 type="number"
                 min="0"
               />
@@ -157,6 +179,7 @@ export default function AddProductButton() {
                 id="imageUrl"
                 name="imageUrl"
                 placeholder="https://example.com/images/my_photo.jpg"
+                defaultValue={addProductState.values?.imageUrl || ""}
                 type="url"
               />
               {addProductState.fieldErrors?.imageUrl && (
